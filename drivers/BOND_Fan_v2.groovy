@@ -35,7 +35,6 @@ void logDebug(String msg) {
 
 def configure() {
     getSupportedFanSpeeds()
-    state.remove("speed_num")
 }
 
 def getMaxSpeed() {
@@ -87,11 +86,14 @@ def getSupportedFanSpeeds() {
 }
 
 def on() {
-	parent.handleOn(device)
-	if (state.lastSpeed != null)
-	{
-		parent.handleFanSpeed(device, state.lastSpeed)
-	}
+    /* Force configure() at least once */
+    if ( state.maxSpeed == null ) {
+        configure()
+    }
+    parent.handleOn( device )
+    if ( state.lastSpeed != null ) {
+        parent.handleFanSpeed( device, state.lastSpeed )
+    }
     log.info "${device.displayName}: Turned on"
 }
 
