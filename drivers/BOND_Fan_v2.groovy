@@ -2,7 +2,7 @@
  *  BOND Fan
  *
  *  Copyright 2019-2020 Dominick Meglio
- *  Updated by Gatewood Green (10/2024)
+ *  Updated and additonal Copyright 2024 Gatewood Green
  *
  */
 
@@ -10,16 +10,18 @@ metadata {
     definition (
 		name: "BOND Fan v2", 
 		namespace: "bond", 
-		author: "dmeglio@gmail.com", 
-		importUrl: "https://raw.githubusercontent.com/dcmeglio/hubitat-bond/master/drivers/BOND_Fan.groovy"
+		author: "gatewoodgreen@gmail.com", 
+		importUrl: "https://raw.githubusercontent.com/sonoranwanderer/hubitat-bond/refs/heads/master/drivers/BOND_Fan_v2.groovy"
 	) {
-		capability "Switch"
+        capability "Switch"
         capability "FanControl"
-		
+
 		command "configure"
         command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
-		command "fixSpeed", [[name:"Speed*", type: "ENUM", description: "Speed", constraints: ["off","low", "medium-low", "medium", "medium-high", "high", "on"] ] ]
-		command "toggle"
+        command "fixSpeed", [[name:"Speed*", type: "ENUM", description: "Speed", constraints: ["off","low", "medium-low", "medium", "medium-high", "high", "on"] ] ]
+        command "toggle"
+        command "getDeviceState"
+        command "wipeStateData"
     }
     
     preferences {
@@ -29,67 +31,113 @@ metadata {
 
 void logDebug(String msg) {
     if (debugEnable) {
-        log.debug("${device.label?device.label:device.name}: ${msg}")
+        log.debug( "${device.label?device.label:device.name}: ${msg}" )
     }
+}
+
+def getDeviceState() {
+    logDebug "getDeviceState(): routine started"
+    def devState = parent.getState( 1 )
+    if ( devState == null ) {
+        log.warn "${device.displayName}: getDeviceState(): parent.getstate() failed"
+        return false
+    } else {
+        strState = devState.toMapString()
+        log.info "${device.displayName}: getDeviceState(): Full Device State: ${strState}"
+        devSpeed = devState.get( "speed" )
+        devPower = devState.get( "power" )
+        log.info "${device.displayName}: getDeviceState(): Power: ${devPower}, Speed: ${devSpeed}"
+    }
+}
+
+def getMyBondId() {
+    myId = 0
+    if (  state.bondDeviceId != null ) {
+        logDebug "getMyBondId(): returning existing state.bondDeviceId (${state.bondDeviceId})"
+        return state.bondDeviceId
+    } else {
+        logDebug "getMyBondId(): state.bondDeviceId is null"
+    }
+    parent.state.fanList.each { key, val ->
+        myLabel = device.label?device.label:device.name
+        log.info "${device.displayName} getDeviceState(): key = ${key}, val = '${val}', label = '${myLabel}'"
+        if ( val == myLabel ) {
+            logDebug "getMyBondId(): Found my ID by name = ${key}"
+            myId = key
+        }
+    }
+    if ( ! myId ) {
+        log.error "${device.displayName}: getMyBondId() Could not find my Bond ID"
+        return null
+    }
+    return myId
 }
 
 def configure() {
-    getSupportedFanSpeeds()
+    logDebug "configure(): Calling getMyBondId()"
+    myId = getMyBondId()
+    if ( myId != null ) {
+        state.bondDeviceId = myId
+    } else {
+        log.error "${device.displayName}: configure() failed to get Bond device ID"
+    }
+    logDebug "configure(): Calling getMaxSpeed( ${myId} )"
+    max = getMaxSpeed( myId )
+    if ( max != null ) {
+        state.maxSpeed = max
+    } else {
+        log.error "${device.displayName}: configure() failed to get fan max speed"
+    }
+    logDebug "configure(): Calling loadSupportedFanSpeeds( ${max} )"
+    loadSupportedFanSpeeds( max )
 }
 
-def getMaxSpeed() {
+def chkConfigure() {
+    if ( state.maxSpeed == null || state.bondDeviceId == null ) {
+        configure()
+    }
+}
+
+def wipeStateData() {
+    log.warn "${device.displayName}: Cleared state data"
+    /* Need to write loop */
+    state.remove( "bondDeviceId" )
+    state.remove( "lastSpeed" )
+    state.remove( "maxSpeed" )
+}
+
+def getMaxSpeed( devId ) {
     int maxSpeedN = 0
     
-    if ( parent.state.fanProperties == null ) {
-        log.warn "${device.displayName}: getMaxSpeed(): parent.state.fanProperties = null"
-        parent.getDevices()
-        if ( parent.state.fanProperties != null ) {
-            logDebug "getMaxSpeed(): fixed fanProperties"
-        } else {
-            return false
-        }
-    }
+    maxSpeedN = parent.state.fanProperties.get( devId ).get( "max_speed" )
     logDebug "getMaxSpeed(): Fan Properties = ${parent.state.fanProperties}"
     
-    if (( m = parent.state.fanProperties =~ /,\s*max_speed:(\d+)/ )) {
-        max_speed_str = m.group(1)
-        if (max_speed_str.isInteger()) {
-            maxSpeedN = max_speed_str as Integer
-        } else {
-            log.warn "${device.displayName}: getMaxSpeed(): failed to convert max_speed_str (${max_speed_str}) to int"
-            return false
-        }
-    } else {
+    if ( maxSpeedN == null ) {
         log.warn "${device.displayName}: getMaxSpeed(): Failed to get max_speed from fanProperties"
-        return false
+        return null
     }
     
     logDebug "getMaxSpeed(): Fan Max Speed = ${maxSpeedN}"
-    state.maxSpeed = maxSpeedN
     return maxSpeedN
 }
 
-def getSupportedFanSpeeds() {
-    int maxSpeedN = getMaxSpeed()
+def loadSupportedFanSpeeds( maxSpeedN ) {
     curSpeedN = 0
     fanSpeeds = []
     
     while ( curSpeedN < maxSpeedN ) {
         curSpeedN += 1
         newSpeedS = parent.translateBondFanSpeedToHE( device, maxSpeedN, curSpeedN )
-        logDebug "getSupportedFanSpeeds() Found new speed: ${newSpeedS}"
+        logDebug "loadSupportedFanSpeeds() Found new speed: ${newSpeedS}"
         fanSpeeds = fanSpeeds + [ newSpeedS ]
     }
     speedList = fanSpeeds.toListString()
-    logDebug "getSupportedFanSpeeds() fanSpeeds = ${speedList}"
+    logDebug "loadSupportedFanSpeeds() fanSpeeds = ${speedList}"
     sendEvent(name: "supportedFanSpeeds", value: groovy.json.JsonOutput.toJson(fanSpeeds.reverse() + ["off", "on"]))
 }
 
 def on() {
-    /* Force configure() at least once */
-    if ( state.maxSpeed == null ) {
-        configure()
-    }
+    chkConfigure()
     parent.handleOn( device )
     if ( state.lastSpeed != null ) {
         parent.handleFanSpeed( device, state.lastSpeed )
@@ -127,7 +175,9 @@ def cycleSpeed() {
     if ( state.maxSpeed != null ) {
         maxSpeedN = state.maxSpeed
     } else {
-        maxSpeedN = getMaxSpeed()
+        log.warn "${device.displayName}: cycleSpeed() ID Bond missing, running Configure. Try again"
+        chkConfigure()
+        return
     }
     
     curSpeedS = device.currentValue( "speed" )
