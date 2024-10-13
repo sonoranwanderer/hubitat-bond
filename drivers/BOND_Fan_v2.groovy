@@ -37,9 +37,14 @@ void logDebug(String msg) {
 
 def getDeviceState() {
     logDebug "getDeviceState(): routine started"
-    def devState = parent.getState( 1 )
+    if ( state.bondDeviceId == null ) {
+        log.warn "${device.displayName}: getDeviceState(): ID Bond missing, running getDeviceState(). Try again"
+        chkConfigure()
+        return
+    }
+    def devState = parent.getState( state.bondDeviceId )
     if ( devState == null ) {
-        log.warn "${device.displayName}: getDeviceState(): parent.getstate() failed"
+        log.warn "${device.displayName}: getDeviceState(): parent.getstate( ${state.bondDeviceId} ) failed"
         return false
     } else {
         strState = devState.toMapString()
@@ -60,14 +65,14 @@ def getMyBondId() {
     }
     parent.state.fanList.each { key, val ->
         myLabel = device.label?device.label:device.name
-        log.info "${device.displayName} getDeviceState(): key = ${key}, val = '${val}', label = '${myLabel}'"
+        log.info "${device.displayName}: getMyBondId(): key = ${key}, val = '${val}', label = '${myLabel}'"
         if ( val == myLabel ) {
             logDebug "getMyBondId(): Found my ID by name = ${key}"
             myId = key
         }
     }
     if ( ! myId ) {
-        log.error "${device.displayName}: getMyBondId() Could not find my Bond ID"
+        log.error "${device.displayName}: getMyBondId(): Could not find my Bond ID"
         return null
     }
     return myId
@@ -171,7 +176,6 @@ def cycleSpeed() {
     curSpeedS = ""
     newSpeedS = "low"
 
-    /* Cut down on Hubitat load */
     if ( state.maxSpeed != null ) {
         maxSpeedN = state.maxSpeed
     } else {
