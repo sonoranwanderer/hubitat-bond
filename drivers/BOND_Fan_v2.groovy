@@ -209,7 +209,7 @@ def queryBondAPI() {
     sendEvent(name:"queryStatus", value:"Getting Bond remote address and learn data...")
     getBondDeviceRemoteAddressAndLearn()
     sendEvent(name:"queryStatus", value:"Query complete -<br>REFRESH the page.")
-    device.updateDataValue( "lastBondApiQuery", new Date().format("MM/dd/yyyy HH:mm:ss '('ZZZZZ')'") )
+    device.updateDataValue( "lastBondApiQuery", new Date().format("MM/dd/yyyy HH:mm:ss '('ZZZZZ/zzz')'") )
 }
 
 String getMyBondId() {
