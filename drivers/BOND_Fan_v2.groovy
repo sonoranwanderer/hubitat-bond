@@ -21,7 +21,7 @@ metadata {
         capability "Configuration"
         
         attribute "bondFanMaxSpeed", "integer"
-        attribute "bondBreeze", "integer"
+        attribute "bondBreezeMode", "integer"
         attribute "bondBreezeAverage", "integer"
         attribute "bondBreezeVariability", "integer"
 
@@ -118,7 +118,7 @@ def getBondDeviceState() {
     def bondState = parent.getState( myId )
     if ( bondState != null ) {
         device.updateDataValue( "bondState", bondState.toMapString() )
-            sendEvent(name:"bondBreeze", value:"${bondState.breeze[0]}")
+            sendEvent(name:"bondBreezeMode", value:"${bondState.breeze[0]}")
             sendEvent(name:"bondBreezeAverage", value:"${bondState.breeze[1]}")
             sendEvent(name:"bondBreezeVariability", value:"${bondState.breeze[2]}")
     } else {
@@ -355,7 +355,7 @@ def toggleBreeze( force="" ) {
 
     if ( targetState == "BreezeOn" ) {
         parent.executeAction( myId, targetState )
-        sendEvent(name:"bondBreeze", value:"1")
+        sendEvent(name:"bondBreezeMode", value:"1")
     } else {
         off()
     }
@@ -375,7 +375,7 @@ void on() {
 void off() {
     parent.handleOff(device)
     parent.executeAction( getMyBondId(), "BreezeOff" )
-    sendEvent(name:"bondBreeze", value:"0")
+    sendEvent(name:"bondBreezeMode", value:"0")
     log.info "${device.displayName}: Turned off"
 }
 
@@ -400,7 +400,7 @@ void setSpeed( String speed ) {
         return
     }
     parent.executeAction( getMyBondId(), "BreezeOff" )
-    sendEvent(name:"bondBreeze", value:"0")
+    sendEvent(name:"bondBreezeMode", value:"0")
     parent.handleFanSpeed(device, speed)
 }
 
