@@ -190,6 +190,8 @@ def getBondDeviceCommands() {
 }
 
 def queryBondAPI() {
+    sendEvent(name:"queryStatus", value:"Running configure()...")
+    chkConfigure()
     sendEvent(name:"queryStatus", value:"Getting Bond version data...")
     getBondVersion()
     sendEvent(name:"queryStatus", value:"Getting Bond device data...")
@@ -207,6 +209,7 @@ def queryBondAPI() {
     sendEvent(name:"queryStatus", value:"Getting Bond remote address and learn data...")
     getBondDeviceRemoteAddressAndLearn()
     sendEvent(name:"queryStatus", value:"Query complete -<br>REFRESH the page.")
+    device.updateDataValue( "lastBondApiQuery", new Date().format("MM/dd/yyyy HH:mm:ss '('zzz')'") )
 }
 
 String getMyBondId() {
@@ -235,6 +238,12 @@ void chkConfigure() {
 
 void wipeStateData( int silent=0 ) {
     state.clear()
+    
+    device.deleteCurrentState( "bondBreezeMode" )
+    device.deleteCurrentState( "bondFanMaxSpeed" )
+    device.deleteCurrentState( "bondBreezeAverage" )
+    device.deleteCurrentState( "bondBreezeVariability" )
+    
     def dataValues = device.getData()
     String[] dvalues = []
     dataValues.each { key, val ->
@@ -335,6 +344,7 @@ def getDeviceSpeed() {
 }
 
 def toggleBreeze( force="" ) {
+    chkConfigure()
     def myId = getMyBondId()
     def curSpeed = device.currentValue( "speed" )
     def mode = 1
