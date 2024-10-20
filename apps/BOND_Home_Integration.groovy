@@ -1,9 +1,10 @@
 /**
- *  https://raw.githubusercontent.com/dcmeglio/hubitat-bond/master/apps/BOND_Home_Integration.groovy
+ *  https://raw.githubusercontent.com/sonoranwanderer/hubitat-bond/refs/heads/master/apps/BOND_Home_Integration.groovy
  *
  *  BOND Home Integration
  *
  *  Copyright 2019-2020 Dominick Meglio
+ *  Additional copyright 2024 Gatewood Green
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
@@ -17,6 +18,7 @@
  * 2020.04.21 - Added better logging for connection issues to the hub
  * 2020.05.04 - Error logging improvements
  * 2020.06.28 - Added toggle command to all devices (suggested by jchurch) and support for having multiple Smart by BOND devices (discovered by jhciotti)
+ * 2024.10.20 - Fixed component light state updates to Hubitat device
  *
  */
 
@@ -280,7 +282,8 @@ def findComponentDevice(dev, deviceId) {
 	if (component != null)
 		return component
 
-	return component?.getChildDevice(hubId + ":bond:" + deviceId) ?: null
+	return dev.getChildDevice(hubId + ":bond:" + deviceId) /* Woody Fix */
+	/* return component?.getChildDevice(hubId + ":bond:" + deviceId) ?: null */
 }
 
 def getBondIdFromDevice(device) {
@@ -554,12 +557,15 @@ def updateDevices() {
         }
         if (deviceLight)
         {
-			if (deviceState.brightness != null)
+            if (deviceState.brightness != null)
 			{
-				if (deviceState.light == 0)
-					deviceLight.sendEvent(name: "level", value: 0)
-				else
-					deviceLight.sendEvent(name: "level", value: deviceState.brightness)
+                if (deviceState.light == 0) {
+					deviceLight.sendEvent( name: "level", value: 0 )
+                    deviceLight.sendEvent( name: "switch", value: "off" )
+                } else {
+					deviceLight.sendEvent( name: "level", value: deviceState.brightness )
+                    deviceLight.sendEvent( name: "switch", value: "on" )
+                }
 			}
 			else
 			{
@@ -573,10 +579,13 @@ def updateDevices() {
 		{
 			if (deviceState.up_light_brightness != null)
 			{
-				if (deviceState.up_light == 0)
-					deviceUpLight.sendEvent(name: "level", value: 0)
-				else
-					deviceUpLight.sendEvent(name: "level", value: deviceState.up_light_brightness)
+                if ( deviceState.up_light == 0 ) {
+					deviceUpLight.sendEvent( name: "level", value: 0 )
+                    deviceUpLight.sendEvent( name: "switch", value: "off" )
+                } else {
+					deviceUpLight.sendEvent( name: "level", value: deviceState.up_light_brightness )
+                    deviceUpLight.sendEvent( name: "switch", value: "on" )
+                }
 			}
 			else
 			{
@@ -590,10 +599,13 @@ def updateDevices() {
 		{
 			if (deviceState.down_light_brightness != null)
 			{
-				if (deviceState.down_light == 0)
-					deviceDownLight.sendEvent(name: "level", value: 0)
-				else
-					deviceDownLight.sendEvent(name: "level", value: deviceState.down_light_brightness)
+                if ( deviceState.down_light == 0 ) {
+					deviceDownLight.sendEvent( name: "level", value: 0 )
+                    deviceDownLight.sendEvent( name: "switch", value: "off" )
+                } else {
+					deviceDownLight.sendEvent( name: "level", value: deviceState.down_light_brightness )
+                    deviceDownLight.sendEvent( name: "switch", value: "on" )
+                }
 			}
 			else
 			{
