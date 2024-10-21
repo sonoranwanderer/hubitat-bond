@@ -52,20 +52,20 @@ def getHttpData( Map params ) {
     params.uri         = "http://${parent.hubIp}"
     params.contentType = "application/json"
     params.headers     = [ 'BOND-Token': parent.hubToken ]
-	try
-	{
-		httpGet(params) { resp ->
-			if (parent.checkHttpResponse("getHttpResult", resp))
-			{
-				result = resp.data
-			}
-		}
-	}
-	catch (e)
-	{
-		parent.checkHttpResponse("getHttpResult", e.getResponse())
-	}
-	return result
+    try
+    {
+        httpGet(params) { resp ->
+            if (parent.checkHttpResponse("getHttpResult", resp))
+            {
+                result = resp.data
+            }
+        }
+    }
+    catch (e)
+    {
+        parent.checkHttpResponse("getHttpResult", e.getResponse())
+    }
+    return result
 }
 
 def getBondVersion() {
