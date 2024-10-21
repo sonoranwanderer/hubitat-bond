@@ -56,6 +56,6 @@ If you find this app useful, please consider making a [donation](https://www.pay
 * 2020.05.04 - Error logging improvements
 * 2020.06.28 - Added toggle command to all devices (suggested by jchurch) and support for having multiple Smart by BOND devices (discovered by jhciotti)
 * 2024.10.12 - Created Bond_Fan_v2.groovy to drop-in replace Bond_Fan.groovy. Fixed Google Home supoort for Hubitat 2.3.9.192, added cycleSpeed and supportFanSpeeds
-* 2024.10,13 - Added auto configure to Bond_Fan_v2.groovy
+* 2024.10.13 - Added auto configure to Bond_Fan_v2.groovy
 * 2024.10.18 - Added Breeze support to Bond_Fan_v2.groovy and queryDevice to generate support/debug data for fans
 * 2024.10.20 - Fixed component light state updates to Hubitat device in app code
