@@ -1,12 +1,12 @@
 {
 	"packageName": "BOND Home Integration",
 	"minimumHEVersion": "2.1.9",
-	"author": "Dominick Meglio",
-	"version": "1.4.0",
-	"dateReleased": "2021-01-25",
-	"documentationLink": "https://github.com/dcmeglio/hubitat-bond/blob/master/README.md",
-	"communityLink": "https://community.hubitat.com/t/support-for-bond-hub/19141",
-	"releaseNotes": "Added support for the Preset command for shades including a setPosition command that supports 0/50/100 as values.",
+	"author": "Dominick Meglio & Gatewood Green",
+	"version": "1.5.0",
+	"dateReleased": "2024-10-20",
+	"documentationLink": "https://github.com/sonoranwanderer/hubitat-bond/blob/master/README.md",
+	"communityLink": "https://community.hubitat.com/t/support-for-bond-hub/19141/802",
+	"releaseNotes": "Fixed issues with Google Home and light device status",
 	"apps" : [
 		{
 			"id" : "bf7d70fb-1fa9-436f-9cfc-fb8520cda22a",
@@ -20,9 +20,9 @@
 	"drivers" : [
 		{
 			"id": "163f6821-e8a7-48fc-8e66-cd787cfe54eb",
-			"name": "BOND Fan",
+			"name": "BOND Fan v2",
 			"namespace": "bond",
-			"location": "https://raw.githubusercontent.com/dcmeglio/hubitat-bond/master/drivers/BOND_Fan.groovy",
+			"location": "https://raw.githubusercontent.com/dcmeglio/hubitat-bond/master/drivers/BOND_Fan_v2.groovy",
 			"required": true
 		},
 		{
