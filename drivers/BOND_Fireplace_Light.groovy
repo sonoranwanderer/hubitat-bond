@@ -4,39 +4,38 @@
  *  Copyright 2019-2020 Dominick Meglio
  *
  */
- 
+
 metadata {
     definition (
-		name: "BOND Fireplace Light", 
-		namespace: "bond", 
-		author: "dmeglio@gmail.com",
-		importUrl: "https://raw.githubusercontent.com/dcmeglio/hubitat-bond/master/drivers/BOND_Fireplace_Light.groovy"
-	) {
-		capability "Switch"
+        name: "BOND Fireplace Light", 
+        namespace: "bond", 
+        author: "dmeglio@gmail.com",
+        importUrl: "https://github.com/sonoranwanderer/hubitat-bond/raw/refs/heads/master/drivers/BOND_Fireplace_Light.groovy"
+    ) {
+        capability "Switch"
         capability "Light"
-		
-		command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
-		command "toggle"
+
+        command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
+        command "toggle"
     }
 }
 
 def on() {
-    
-	parent.handleLightOn(device)
+    parent.handleLightOn(device)
 }
 
 def off() {
-	parent.handleLightOff(device)
+    parent.handleLightOff(device)
 }
 
 def toggle() {
-	if (device.currentValue("switch") == "on")
-		off()
-	else
-		on()
+    if (device.currentValue("switch") == "on")
+        off()
+    else
+        on()
 }
 
 def fixPower(power)
 {
-	parent.fixLightPower(device, power)
+    parent.fixLightPower(device, power)
 }

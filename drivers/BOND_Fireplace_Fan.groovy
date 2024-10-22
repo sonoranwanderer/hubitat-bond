@@ -7,17 +7,17 @@
 
 metadata {
     definition (
-		name: "BOND Fireplace Fan", 
-		namespace: "bond", 
-		author: "dmeglio@gmail.com",
-		importUrl: "https://raw.githubusercontent.com/dcmeglio/hubitat-bond/master/drivers/BOND_Fireplace_Fan.groovy"
-	) {
-		capability "FanControl"
-		capability "Switch"
-		
-		command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
-		command "fixSpeed", [[name:"Speed*", type: "ENUM", description: "Speed", constraints: ["off","low", "medium-low", "medium", "medium-high", "high", "on"] ] ]
-		command "toggle"
+        name: "BOND Fireplace Fan", 
+        namespace: "bond", 
+        author: "dmeglio@gmail.com",
+        importUrl: "https://github.com/sonoranwanderer/hubitat-bond/raw/refs/heads/master/drivers/BOND_Fireplace_Fan.groovy"
+    ) {
+        capability "FanControl"
+        capability "Switch"
+
+        command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
+        command "fixSpeed", [[name:"Speed*", type: "ENUM", description: "Speed", constraints: ["off","low", "medium-low", "medium", "medium-high", "high", "on"] ] ]
+        command "toggle"
     }
 }
 
@@ -26,24 +26,24 @@ def setSpeed(speed) {
 }
 
 def on() {
-	parent.handleFPFanOn(device)
+    parent.handleFPFanOn(device)
 }
 
 def off () {
-	parent.handleFPFanOff(device)
+    parent.handleFPFanOff(device)
 }
 
 def toggle() {
-	if (device.currentValue("switch") == "on")
-		off()
-	else
-		on()
+    if (device.currentValue("switch") == "on")
+        off()
+    else
+        on()
 }
 
 def fixPower(power) {
-	parent.fixFPFanPower(device, power)
+    parent.fixFPFanPower(device, power)
 }
 
 def fixSpeed(speed) {
-	parent.fixFPFanSpeed(device, speed)
+    parent.fixFPFanSpeed(device, speed)
 }

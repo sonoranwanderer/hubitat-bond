@@ -7,30 +7,30 @@
 
 metadata {
     definition (
-		name: "BOND Fan Dimmable Light", 
-		namespace: "bond", 
-		author: "dmeglio@gmail.com",
-		importUrl: "https://raw.githubusercontent.com/dcmeglio/hubitat-bond/master/drivers/BOND_Fan_Dimmable_Light.groovy"
-	) {
-		capability "SwitchLevel"
-		capability "Switch"
+        name: "BOND Fan Dimmable Light", 
+        namespace: "bond", 
+        author: "dmeglio@gmail.com",
+        importUrl: "https://github.com/sonoranwanderer/hubitat-bond/raw/refs/heads/master/drivers/BOND_Fan_Dimmable_Light.groovy"
+    ) {
+        capability "SwitchLevel"
+        capability "Switch"
         capability "Light"
-		
-		command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
-		command "fixLevel", [[name:"Level*", type: "NUMBER", description: "Level"]]
-		command "toggle"
+
+        command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
+        command "fixLevel", [[name:"Level*", type: "NUMBER", description: "Level"]]
+        command "toggle"
     }
 }
 
 def setLevel(level, duration) {
-	parent.handleLightLevel(device, level)
+    parent.handleLightLevel(device, level)
 }
 def setLevel(level) {
-	parent.handleLightLevel(device, level)
+    parent.handleLightLevel(device, level)
 }
 
 def on() {
-	parent.handleLightOn(device)
+    parent.handleLightOn(device)
 }
 
 def off() {
@@ -38,16 +38,16 @@ def off() {
 }
 
 def toggle() {
-	if (device.currentValue("switch") == "on")
-		off()
-	else
-		on()
+    if (device.currentValue("switch") == "on")
+        off()
+    else
+        on()
 }
 
 def fixPower(power) {
-	parent.fixLightPower(device, power)
+    parent.fixLightPower(device, power)
 }
 
 def fixLevel(power) {
-	parent.fixLightLevel(device, power)
+    parent.fixLightLevel(device, power)
 }
