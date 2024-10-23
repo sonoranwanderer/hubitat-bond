@@ -48,7 +48,7 @@ def prefHub() {
             input("hubIp", "text", title: "BOND Hub IP", description: "BOND Hub IP Address", required: true)
             input("hubToken", "text", title: "BOND Hub Token", description: "BOND Hub Token", required: true)
             input("refreshInterval", "number", title: "Poll BOND Home every N seconds", required: true, defaultValue: 30)
-            input("debugOutput", "bool", title: "Enable debug logging?", defaultValue: true, displayDuringSetup: false, required: false)
+            input( "logLevel", "enum", title: "Log Level", options: [ "info", "debug", "trace" ],  defaultValue: "info", required: true )
         }
         displayFooter()
     }
@@ -131,6 +131,32 @@ def initialize() {
     
     def refreshEvery = refreshInterval ?: 30
     schedule("0/${refreshEvery} * * * * ? *", updateDevices)
+}
+
+void logAppEvent ( message="", level="info" ) {
+    if ( level == "trace") {
+        if ( settings?.logLevel != "trace")
+            return
+    } else if ( level == "debug" ) {
+        if ( settings?.logLevel != "trace" && settings?.logLevel != "debug" )
+            return
+    }
+    
+    if ( level == "trace" || level == "debug" ) {
+        log."${level}" "${app.name}: logLevel=${logLevel}: ${message}"
+    } else {
+        log."${level}" "${app.name}: ${message}"
+    }
+}
+
+void logDebug( message ) {
+    /* Compatibility pasthrough function
+     *   postpend message for tracing legacy debug calls
+     */
+    if ( settings?.logLevel == "trace" )
+        logAppEvent( "${message} : [legacy logDebug()]", "debug" )
+    else
+        logAppEvent( message, "debug" )
 }
 
 def getHubId() {
@@ -1162,15 +1188,15 @@ def translateBondFanSpeedToHE(id, max_speeds, speed)
 {
     def speedTranslations = 
     [
-        10: [10: "high", 9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low"],
-        9: [9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low"],
-        8: [8: "high", 7: "medium-high", 6: "medium-high", 5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low", 1: "low"],
-        7: [7: "high", 6: "medium-high", 5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low", 1: "low"],
-        6: [6: "high", 5: "medium-high", 4: "medium", 3: "medium", 2: "medium-low", 1: "low"],
-        5: [5: "high", 4: "medium-high", 3: "medium", 2: "medium-low", 1: "low"],
-        4: [4: "high", 3: "medium", 2: "medium-low", 1: "low"],
-        3: [3: "high", 2: "medium", 1: "low"],
-        2: [2: "high", 1: "low" ]
+        10: [10: "high", 9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low" ],
+        9:  [ 9: "high",            8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low" ],
+        8:  [ 8: "high",            7: "medium-high", 6: "medium-high", 5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low",           1: "low" ],
+        7:  [ 7: "high",            6: "medium-high",                   5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low",           1: "low" ],
+        6:  [ 6: "high",            5: "medium-high",                   4: "medium", 3: "medium", 2: "medium-low",                            1: "low" ],
+        5:  [ 5: "high",            4: "medium-high",                   3: "medium",              2: "medium-low",                            1: "low" ],
+        4:  [ 4: "high",                                                3: "medium",              2: "medium-low",                            1: "low" ],
+        3:  [ 3: "high",                                                2: "medium",                                                          1: "low" ],
+        2:  [ 2: "high",                                                                                                                      1: "low" ]
     ]
     
     if (!speed.toString().isNumber())
@@ -1188,26 +1214,24 @@ def translateHEFanSpeedToBond(id, max_speeds, speed)
 {
     if (speed.isNumber())
         return speed.toInteger()
-        
-        
+
     def speedTranslations =
     [
-        10: ["high": 10, "medium-high": 8, "medium": 5, "medium-low": 3, "low": 1],
-        9: ["high": 9, "medium-high": 7, "medium": 5, "medium-low": 3, "low": 1],
-        8: ["high": 8, "medium-high": 6, "medium": 4, "medium-low": 3, "low": 1],
-        7: ["high": 7, "medium-high": 6, "medium": 4, "medium-low": 3, "low": 1 ],
-        6: ["high": 6, "medium-high": 5, "medium": 3, "medium-low": 2, "low": 1],
-        5: ["high": 5, "medium-high": 4, "medium": 3, "medium-low": 2, "low": 1],
-        4: ["high": 4, "medium": 3, "medium-low": 2, "low": 1],
-        3: ["high": 3, "medium": 2, "low": 1],
-        2: ["high": 2, "low": 1]
+        10: [ "high": 10, "medium-high": 8, "medium": 5, "medium-low": 3, "low": 1 ],
+        9:  [ "high": 9,  "medium-high": 7, "medium": 5, "medium-low": 3, "low": 1 ],
+        8:  [ "high": 8,  "medium-high": 6, "medium": 4, "medium-low": 3, "low": 1 ],
+        7:  [ "high": 7,  "medium-high": 6, "medium": 4, "medium-low": 3, "low": 1 ],
+        6:  [ "high": 6,  "medium-high": 5, "medium": 3, "medium-low": 2, "low": 1 ],
+        5:  [ "high": 5,  "medium-high": 4, "medium": 3, "medium-low": 2, "low": 1 ],
+        4:  [ "high": 4,  "medium-high": 3, "medium": 3, "medium-low": 2, "low": 1 ],
+        3:  [ "high": 3,  "medium-high": 2, "medium": 2, "medium-low": 2, "low": 1 ],
+        2:  [ "high": 2,  "medium-high": 2, "medium": 1, "medium-low": 1, "low": 1 ]
     ]
-    
+
     if (max_speeds > 10)
         return null
-        
+
     logDebug "${id} -> Translating ${speed}:${max_speeds} to BOND ${speedTranslations[max_speeds][speed]}"
-        
     return speedTranslations[max_speeds][speed]
 }
 
@@ -1489,12 +1513,6 @@ def shouldSendEvent(bondId) {
         }
     }
     return true;
-}
-
-def logDebug(msg) {
-    if (settings?.debugOutput) {
-        log.debug msg
-    }
 }
 
 def checkHttpResponse(action, resp) {
