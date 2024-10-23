@@ -1,25 +1,25 @@
 /**
- *  BOND Fan
+ *  BOND Fan With Direction v2
  *
  *  Copyright 2019-2020 Dominick Meglio
  *  Additonal Copyright 2024 Gatewood Green
- *  Oct 12, 2024 - Implemented supportedFanSpeeds & cycleSpeed(), fixing Google Home integration breakage with Hubitat 2.3.9.192
- *  Oct 13, 2024 - Implmented auto configuration
- *  Oct 18, 2024 - Implmented breeze functionality and data/device debug support, aka queryDevice()
+ *  Oct 23, 2024 - Implemented supportedFanSpeeds & cycleSpeed(), fixing Google Home integration breakage with Hubitat 2.3.9.192
+ *               - Implmented auto configuration and breeze functionality and data/device debug support, aka queryDevice()
  *
  */
 
 metadata {
     definition (
-        name:      "BOND Fan v2", 
+        name: "BOND Fan With Direction v2", 
         namespace: "bond", 
-        author:    "gatewoodgreen@gmail.com", 
-        importUrl: "https://raw.githubusercontent.com/sonoranwanderer/hubitat-bond/refs/heads/master/drivers/BOND_Fan_v2.groovy"
+        author: "gatewoodgreen@gmail.com",
+        importUrl: "https://github.com/sonoranwanderer/hubitat-bond/raw/refs/heads/master/drivers/BOND_Fan_With_Direction_v2.groovy"
     ) {
         capability "Switch"
         capability "FanControl"
         capability "Configuration"
-        
+
+        attribute "direction", "enum", ["forward", "reverse"]
         attribute "bondFanMaxSpeed", "integer"
         attribute "bondBreezeMode", "integer"
         attribute "bondBreezeAverage", "integer"
@@ -27,17 +27,19 @@ metadata {
 
         command "configure"
         /*
-        command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
-        command "fixSpeed", [[name:"Speed*", type: "ENUM", description: "Speed", constraints: ["off","low", "medium-low", "medium", "medium-high", "high", "on"] ] ]
+        command "fixPower",     [ [ name:"Power*", type: "ENUM", description: "Power", constraints: [ "off","on" ] ] ]
+        command "fixSpeed",     [ [ name:"Speed*", type: "ENUM", description: "Speed", constraints: [ "off","low", "medium-low", "medium", "medium-high", "high", "on" ] ] ]
+        command "fixDirection", [ [ name:"Direction*", type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
         */
+        command "setDirection", [ [ name:"Direction",  type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
         command "toggle"
         command "queryDevice"
         command "wipeStateData"
         command "toggleBreeze"
-        command "setBreezeParameters",[[name:"AverageSpeed*",type:"NUMBER", description:"Average Speed"],
-                                       [name:"Variability*", type:"NUMBER", description:"Speed Variability"]]
+        command "setBreezeParameters",[ [ name:"AverageSpeed*",type:"NUMBER", description:"Average Speed" ],
+                                        [ name:"Variability*", type:"NUMBER", description:"Speed Variability" ] ]
     }
-    
+
     preferences {
         input name: "debugEnable", type: "bool", title: "Enable debug logging", defaultValue: false
     }
@@ -373,7 +375,7 @@ def toggleBreeze( force="" ) {
     }
 }
 
-void on() {
+def on() {
     chkConfigure()
     parent.handleOn( device )
     if ( state.lastSpeed != null ) {
@@ -384,18 +386,26 @@ void on() {
     log.info "${device.displayName}: Turned on"
 }
 
-void off() {
+def off() {
     parent.handleOff(device)
     parent.executeAction( getMyBondId(), "BreezeOff" )
     sendEvent(name:"bondBreezeMode", value:"0")
     log.info "${device.displayName}: Turned off"
 }
 
-void toggle() {
+def toggle() {
     if (device.currentValue("switch") == "on")
         off()
     else
         on()
+}
+
+def handleLightOn(device) {
+    parent.handleLightOn(device)
+}
+
+def handleLightOff(device) {
+    parent.handleLightOff(device)
 }
 
 void setSpeed( String speed ) {
@@ -449,45 +459,43 @@ void cycleSpeed() {
     setSpeed( newSpeedS )
 }
 
-void fixPower( power ) {
-    parent.fixPowerState( device, power )
+def setDirection(direction) {
+    parent.handleDirection(device, direction)
 }
 
-void fixSpeed( speed ) {
-    parent.fixFanSpeed( device, speed )
-}
-
-/* Child (light) device support */
-
-void handleLightOn(device) {
-    parent.handleLightOn(device)
-}
-
-void handleLightOff(device) {
-    parent.handleLightOff(device)
-}
-
-void handleLightLevel(device, level)
+def handleLightLevel(device, level)
 {
     parent.handleLightLevel(device, level)
 }
 
-void handleDim(device, duration) {
+def handleDim(device, duration) {
     parent.handleDim(device, duration)
 }
 
-void handleStartDimming(device) {
+def handleStartDimming(device) {
     parent.handleStartDimming(device)
 }
 
-void handleStopDimming(device) {
+def handleStopDimming(device) {
     parent.handleStopDimming(device)
 }
 
-void fixLightPower(device, power) {
+def fixPower(power) {
+    parent.fixPowerState(device, power)
+}
+
+def fixSpeed(speed) {
+    parent.fixFanSpeed(device, speed)
+}
+
+def fixDirection(direction) {
+    parent.fixDirection(device, direction)
+}
+
+def fixLightPower(device, power) {
     parent.fixLightPower(device, power)
 }
 
-void fixLightLevel(device, level) {
+def fixLightLevel(device, level) {
     parent.fixLightLevel(device, level)
 }
