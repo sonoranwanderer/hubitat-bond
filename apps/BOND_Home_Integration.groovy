@@ -20,6 +20,7 @@
  * 2020.06.28 - Added toggle command to all devices (suggested by jchurch) and support for having multiple Smart by BOND devices (discovered by jhciotti)
  * 2024.10.20 - Fixed component light state updates to Hubitat device
  * 2024.10.21 - Device power/switch local state changes now report as type: "physical", light local state brightness changes as unit: "%"
+ * 2024.10.23 - Fixed potential fan speed mapping issues, replaced the binary Debug log option switch in the app to support levels of logging
  *
  */
 
