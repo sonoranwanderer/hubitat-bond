@@ -1162,7 +1162,7 @@ def translateBondFanSpeedToHE(id, max_speeds, speed)
 {
     def speedTranslations = 
     [
-        10: [10: "high", 9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: 1, 1: "low"],
+        10: [10: "high", 9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low"],
         9: [9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low"],
         8: [8: "high", 7: "medium-high", 6: "medium-high", 5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low", 1: "low"],
         7: [7: "high", 6: "medium-high", 5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low", 1: "low"],
@@ -1193,7 +1193,7 @@ def translateHEFanSpeedToBond(id, max_speeds, speed)
     def speedTranslations =
     [
         10: ["high": 10, "medium-high": 8, "medium": 5, "medium-low": 3, "low": 1],
-        9: ["high": 9, "medium-high": 7, ":medium": 5, "medium-low": 3, "low": 1],
+        9: ["high": 9, "medium-high": 7, "medium": 5, "medium-low": 3, "low": 1],
         8: ["high": 8, "medium-high": 6, "medium": 4, "medium-low": 3, "low": 1],
         7: ["high": 7, "medium-high": 6, "medium": 4, "medium-low": 3, "low": 1 ],
         6: ["high": 6, "medium-high": 5, "medium": 3, "medium-low": 2, "low": 1],
