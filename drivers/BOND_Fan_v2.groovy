@@ -38,6 +38,7 @@ metadata {
         command "fixDirection", [ [ name:"Direction*", type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
         */
         command "setDirection", [ [ name:"Direction",  type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
+        command "rebootBond"
         command "toggle"
         command "queryDevice"
         command "wipeStateData"
@@ -93,6 +94,21 @@ def getBondVersion() {
         log.error "${device.displayName}: queryBondAPI(): Failed to get Bond version data"
     }
     return bondVersion
+}
+
+def rebootBond() {
+    def myId = getMyBondId()
+    def params = [
+        path: "/v2/sys/reboot"
+    ]
+    def bondReboot = getHttpData( params )
+    if ( bondReboot != null ) {
+        device.updateDataValue( "bondReboot", bondProperties.toMapString() )
+    } else {
+        device.updateDataValue( "bondReboot", null )
+        log.error "${device.displayName}: bondReboot(): Failed to reboot Bond. Command may not be implemented on controller."
+    }
+    return bondProperties
 }
 
 def getBondDeviceData() {
