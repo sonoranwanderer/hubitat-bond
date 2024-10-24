@@ -24,6 +24,7 @@ metadata {
         attribute "bondFanMaxSpeed", "integer"
         attribute "bondBreezeMode", "integer"
         attribute "bondBreezeAverage", "integer"
+        attribute "bondBreezeSupport", "integer"
         attribute "bondBreezeVariability", "integer"
 
         command "configure"
@@ -126,7 +127,10 @@ def getBondDeviceState() {
         if ( bondState.breeze != null ) {
             sendEvent(name:"bondBreezeMode", value:"${bondState.breeze[0]}")
             sendEvent(name:"bondBreezeAverage", value:"${bondState.breeze[1]}")
+            sendEvent(name:"bondBreezeSupport", value:"1")
             sendEvent(name:"bondBreezeVariability", value:"${bondState.breeze[2]}")
+        } else {
+            sendEvent(name:"bondBreezeSupport", value:"0")
         }
     } else {
         device.updateDataValue( "bondState", null )
@@ -250,6 +254,7 @@ void wipeStateData( int silent=0 ) {
     device.deleteCurrentState( "bondBreezeMode" )
     device.deleteCurrentState( "bondFanMaxSpeed" )
     device.deleteCurrentState( "bondBreezeAverage" )
+    device.deleteCurrentState( "bondBreezeSupport" )
     device.deleteCurrentState( "bondBreezeVariability" )
     
     def dataValues = device.getData()
@@ -358,6 +363,10 @@ def getDeviceSpeed() {
 
 def toggleBreeze( force="" ) {
     chkConfigure()
+    if ( device.currentValue( "bondBreezeSupport" ) < 1 ) {
+        log.warn "${device.displayName}: toggleBreeze(): Device does not support Breeze mode"
+        return
+    }
     def myId = getMyBondId()
     def curSpeed = device.currentValue( "speed" )
     def mode = 1
@@ -366,10 +375,6 @@ def toggleBreeze( force="" ) {
         return
     }
     def breezeState = getBreezeState()
-    if ( breezeState == null ) {
-        log.warn "${device.displayName}: toggleBreeze(): Device does not support Breeze mode"
-        return
-    }
     def targetState = "BreezeOn"
     if ( breezeState ) {
         targetState = "BreezeOff"
@@ -439,7 +444,9 @@ void setSpeed( String speed ) {
         off()
         return
     }
-    parent.executeAction( getMyBondId(), "BreezeOff" )
+    if ( device.currentValue( "bondBreezeSupport" ) > 0 ) {
+        parent.executeAction( getMyBondId(), "BreezeOff" )
+    }
     sendEvent(name:"bondBreezeMode", value:"0")
     parent.handleFanSpeed(device, speed)
 }
