@@ -6,6 +6,8 @@
  *  Copyright 2019-2020 Dominick Meglio
  *  Additional copyright 2024 Gatewood Green
  *
+ *  Version 202410231145
+ *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
  * 2019.12.01 - Fixed an issue where dimmers wouldn't work with fans that support direction controls, fixed an issue setting flame height
@@ -1191,13 +1193,13 @@ def translateBondFanSpeedToHE(id, max_speeds, speed)
     [
         10: [10: "high", 9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low" ],
         9:  [ 9: "high",            8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low" ],
-        8:  [ 8: "high",            7: "medium-high", 6: "medium-high", 5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low",           1: "low" ],
-        7:  [ 7: "high",            6: "medium-high",                   5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low",           1: "low" ],
-        6:  [ 6: "high",            5: "medium-high",                   4: "medium", 3: "medium", 2: "medium-low",                            1: "low" ],
-        5:  [ 5: "high",            4: "medium-high",                   3: "medium",              2: "medium-low",                            1: "low" ],
-        4:  [ 4: "high",                                                3: "medium",              2: "medium-low",                            1: "low" ],
-        3:  [ 3: "high",                                                2: "medium",                                                          1: "low" ],
-        2:  [ 2: "high",                                                                                                                      1: "low" ]
+        8:  [ 8: "high",            7: "medium-high", 6: "medium-high", 5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low", 1: "low" ],
+        7:  [ 7: "high",            6: "medium-high",                   5: "medium", 4: "medium", 3: "medium-low", 2: "medium-low", 1: "low" ],
+        6:  [ 6: "high",            5: "medium-high",                   4: "medium", 3: "medium", 2: "medium-low",                  1: "low" ],
+        5:  [ 5: "high",            4: "medium-high",                   3: "medium",              2: "medium-low",                  1: "low" ],
+        4:  [ 4: "high",                                                3: "medium",              2: "medium-low",                  1: "low" ],
+        3:  [ 3: "high",                                                2: "medium",                                                1: "low" ],
+        2:  [ 2: "high",                                                                                                            1: "low" ]
     ]
     
     if (!speed.toString().isNumber())
