@@ -9,7 +9,7 @@
  *  Oct 23, 2024 - Fixed issue for fans without Breeze support and added runAction()
  *  Oct 23, 2024 - Merge BOND_Fan_With_Direction_v2 with BOND_Fan_v2
  *
- *  VERSION 202410231105
+ *  VERSION 202410231145
  */
 
 metadata {
