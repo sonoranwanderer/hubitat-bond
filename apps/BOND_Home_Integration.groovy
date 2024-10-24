@@ -6,7 +6,7 @@
  *  Copyright 2019-2020 Dominick Meglio
  *  Additional copyright 2024 Gatewood Green
  *
- *  VERSION 202410231145
+ *  VERSION 202410241415
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
@@ -23,6 +23,7 @@
  * 2024.10.20 - Fixed component light state updates to Hubitat device
  * 2024.10.21 - Device power/switch local state changes now report as type: "physical", light local state brightness changes as unit: "%"
  * 2024.10.23 - Fixed potential fan speed mapping issues, replaced the binary Debug log option switch in the app to support levels of logging
+ * 2024.10.24 - Improved API error reporting
  *
  */
 
@@ -1523,12 +1524,12 @@ def checkHttpResponse(action, resp) {
         return true
     else if (resp.status == 400 || resp.status == 401 || resp.status == 404 || resp.status == 409 || resp.status == 500)
     {
-        log.error "${action}: ${resp.status} - ${resp.getData()}"
+        log.error "${action}: Bond error response: ${resp.status} - ${resp.getData()}"
         return false
     }
     else
     {
-        log.error "${action}: unexpected HTTP response: ${resp.status}"
+        log.error "${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}"
         return false
     }
 }
