@@ -10,8 +10,9 @@
  *  Oct 23, 2024 - Merge BOND_Fan_With_Direction_v2 with BOND_Fan_v2
  *  Oct 23, 2024 - Clean up queryDevice()/queryBondAPI(). Add updateBondState command.
  *  Oct 23, 2024 - made getMaxSpeed() more resilient
+ *  Oct 23, 2024 - made getMyBondId() more resilient
  *
- *  VERSION 202410241400
+ *  VERSION 202410241615
  */
 
 metadata {
@@ -124,7 +125,7 @@ def getBondDeviceData() {
         device.updateDataValue( "bondDevice", bondDevice.toMapString() )
     } else {
         device.updateDataValue( "bondDevice", null )
-        log.error "${device.displayName}: getBondDeviceData(): Failed to get Bond device data"
+        log.error "${device.displayName}: getBondDeviceData(): Failed to get Bond device data for fan ${myId}"
     }
     return bondDevice
 }
@@ -139,7 +140,7 @@ def getBondDeviceProperties() {
         device.updateDataValue( "bondProperties", bondProperties.toMapString() )
     } else {
         device.updateDataValue( "bondProperties", null )
-        log.error "${device.displayName}: getBondDeviceProperties(): Failed to get Bond properties data"
+        log.error "${device.displayName}: getBondDeviceProperties(): Failed to get Bond properties data for fan ${myId}"
     }
     return bondProperties
 }
@@ -177,7 +178,7 @@ def getBondDeviceState() {
         }
     } else {
         device.updateDataValue( "bondState", null )
-        log.error "${device.displayName}: getBondDeviceState(): Failed to get Bond state data"
+        log.error "${device.displayName}: getBondDeviceState(): Failed to get Bond state data for fan ${myId}"
     }
     return bondState
 }
@@ -192,7 +193,7 @@ def getBondDeviceActions() {
         device.updateDataValue( "bondActions", bondActions.toMapString() )
     } else {
         device.updateDataValue( "bondActions", null )
-        log.error "${device.displayName}: getBondDeviceActions(): Failed to get Bond actions data"
+        log.error "${device.displayName}: getBondDeviceActions(): Failed to get Bond actions data for fan ${myId}"
     }
     return bondActions
 }
@@ -207,7 +208,7 @@ def getBondDevicePowerCycleState() {
         device.updateDataValue( "bondPowerCycleState", bondPowerCycleState.toMapString() )
     } else {
         device.updateDataValue( "bondPowerCycleState", null )
-        log.error "${device.displayName}: getBondDevicePowerCycleState(): Failed to get Bond power cycle state data"
+        log.error "${device.displayName}: getBondDevicePowerCycleState(): Failed to get Bond power cycle state data for fan ${myId}"
     }
     return bondPowerCycleState
 }
@@ -223,7 +224,7 @@ def getBondDeviceRemoteAddressAndLearn() {
         device.updateDataValue( "bondAddr", bondAddr.toMapString() )
     } else {
         device.updateDataValue( "bondAddr", null )
-        log.error "${device.displayName}: getBondDeviceRemoteAddressAndLearn(): Failed to get Bond remote address and learn window data"
+        log.error "${device.displayName}: getBondDeviceRemoteAddressAndLearn(): Failed to get Bond remote address and learn window data for fan ${myId}"
     }
     return bondAddr
 }
@@ -238,7 +239,7 @@ def getBondDeviceCommands() {
         device.updateDataValue( "bondCommands", bondCommands.toMapString() )
     } else {
         device.updateDataValue( "bondCommands", null )
-        log.warn "${device.displayName}: getBondDeviceCommands(): Failed to get Bond commands data (this is expected as is the preceding 404 error)"
+        log.warn "${device.displayName}: getBondDeviceCommands(): Failed to get Bond commands data for fan ${myId} (this is expected as is the preceding 404 error)"
     }
     return bondCommands
 }
@@ -302,7 +303,20 @@ def queryBondAPI() {
 }
 
 String getMyBondId() {
-    return parent.getBondIdFromDevice( device )
+    def bondDeviceId = ""
+    bondDeviceId = parent.getBondIdFromDevice( device )
+    if ( bondDeviceId == null || bondDeviceId == "" ) {
+        logDebug "getMyBondId(): failed to get device Id from Bond app"
+        List<String> networkId = device.getDeviceNetworkId().split( ":" )
+        if ( networkId[2] != null ) {
+            bondDeviceId = networkId[2]
+            logDebug "getMyBondId(): pulled ${bondDeviceId} from ${device.getDeviceNetworkId()}"
+        } else {
+            log.error "${device.displayName}: getMyBondId(): failed to get device Id from getDeviceNetworkId(): ${device.getDeviceNetworkId()}. Trying '1'"
+            bondDeviceId = 1 /* guess */
+        }
+    }
+    return bondDeviceId
 }
 
 void configure() {
@@ -415,7 +429,7 @@ void loadSupportedFanSpeeds( int maxSpeedN ) {
 void queryDevice() {
     def bondDeviceId = getMyBondId()
     if ( bondDeviceId == null ) {
-        log.warn "${device.displayName}: queryDevice(): ID Bond missing, running configure(). Try again"
+        log.warn "${device.displayName}: queryDevice(): Bond device ID missing, running configure(). Try again"
         chkConfigure()
         return
     }
