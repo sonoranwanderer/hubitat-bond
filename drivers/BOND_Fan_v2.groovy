@@ -11,7 +11,7 @@
  *  Oct 23, 2024 - Clean up queryDevice()/queryBondAPI(). Add updateBondState command.
  *  Oct 23, 2024 - made getMaxSpeed() more resilient
  *
- *  VERSION 202410241300
+ *  VERSION 202410241330
  */
 
 metadata {
@@ -373,7 +373,8 @@ int getMaxSpeed( devId ) {
     }
     
     if ( fallBack ) {
-        def bondProperties = getBondDeviceProperties()
+        def myId = getMyBondId()
+        def bondProperties = getBondDeviceProperties( myId )
         if ( bondProperties == null ) {
             log.warn "${device.displayName}: getMaxSpeed(): getBondDeviceProperties failed, guessing max_speed is 3"
         } else {
