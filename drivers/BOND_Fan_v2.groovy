@@ -9,8 +9,9 @@
  *  Oct 23, 2024 - Fixed issue for fans without Breeze support and added runAction()
  *  Oct 23, 2024 - Merge BOND_Fan_With_Direction_v2 with BOND_Fan_v2
  *  Oct 23, 2024 - Clean up queryDevice()/queryBondAPI(). Add updateBondState command.
+ *  Oct 23, 2024 - made getMaxSpeed() more resilient
  *
- *  VERSION 202410241000
+ *  VERSION 202410241300
  */
 
 metadata {
@@ -354,13 +355,42 @@ void wipeStateData( int silent=0 ) {
 
 int getMaxSpeed( devId ) {
     int maxSpeedN = 0
+    int fallBack  = 0
     
-    maxSpeedN = parent.state.fanProperties.get( devId ).get( "max_speed" )
-    logDebug "getMaxSpeed(): Fan Properties = ${parent.state.fanProperties}"
+    /* All of this due to dirty, unreliable data structures */
+    if ( parent.state.fanProperties != null ) {
+        device.updateDataValue( "bondAppFanProperties", parent.state.fanProperties.toMapString() )
+        try {
+            maxSpeedN = parent.state.fanProperties.get( devId ).get( "max_speed" )
+            logDebug "getMaxSpeed(): got max_speed from fanProperties"
+        } catch ( err ) {
+            log.warn "${device.displayName}: getMaxSpeed(): parent.state.fanProperties get max_speed failed (${err.toMapString()}), getting fan properties directly..."
+            fallBack = 1
+        }
+    } else {
+        log.warn "${device.displayName}: getMaxSpeed(): parent.state.fanProperties is null, getting fan properties directly..."
+        fallBack = 1
+    }
+    
+    if ( fallBack ) {
+        def bondProperties = getBondDeviceProperties()
+        if ( bondProperties == null ) {
+            log.warn "${device.displayName}: getMaxSpeed(): getBondDeviceProperties failed, guessing max_speed is 3"
+            maxSpeedN = 3 /* just guess */
+        } else {
+            if ( bondProperties.max_speed == null ) {
+                log.warn "${device.displayName}: getMaxSpeed(): bondProperties.max_speed is null, guessing max_speed is 3"
+                maxSpeedN = 3 /* just guess */
+            } else {
+                maxSpeedN = bondProperties.max_speed
+                logDebug "getMaxSpeed(): got max_speed from bondProperties"
+            }
+        }
+    }
     
     if ( maxSpeedN == null ) {
-        log.warn "${device.displayName}: getMaxSpeed(): Failed to get max_speed from fanProperties"
-        return null
+        log.warn "${device.displayName}: getMaxSpeed(): Failed to get max_speed from all sources, guessing 3"
+        maxSpeedN = 3 /* just guess */
     }
     
     logDebug "getMaxSpeed(): Fan Max Speed = ${maxSpeedN}"
