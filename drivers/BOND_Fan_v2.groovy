@@ -6,6 +6,7 @@
  *  Oct 12, 2024 - Implemented supportedFanSpeeds & cycleSpeed(), fixing Google Home integration breakage with Hubitat 2.3.9.192
  *  Oct 13, 2024 - Implmented auto configuration
  *  Oct 18, 2024 - Implmented breeze functionality and data/device debug support, aka queryDevice()
+ *  Oct 23, 2024 - Fixed issue for fans without Breeze support and added runAction()
  *
  */
 
