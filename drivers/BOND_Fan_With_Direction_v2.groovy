@@ -36,6 +36,8 @@ metadata {
         command "queryDevice"
         command "wipeStateData"
         command "toggleBreeze"
+        command "runAction",          [ [ name:"BondAction*",  type:"STRING", description:"Bond Device Action"],
+                                        [ name:"Arguments",    type:"STRING", description:"Action Arguments" ] ]
         command "setBreezeParameters",[ [ name:"AverageSpeed*",type:"NUMBER", description:"Average Speed" ],
                                         [ name:"Variability*", type:"NUMBER", description:"Speed Variability" ] ]
     }
@@ -122,9 +124,11 @@ def getBondDeviceState() {
     def bondState = parent.getState( myId )
     if ( bondState != null ) {
         device.updateDataValue( "bondState", bondState.toMapString() )
+        if ( bondState.breeze != null ) {
             sendEvent(name:"bondBreezeMode", value:"${bondState.breeze[0]}")
             sendEvent(name:"bondBreezeAverage", value:"${bondState.breeze[1]}")
             sendEvent(name:"bondBreezeVariability", value:"${bondState.breeze[2]}")
+        }
     } else {
         device.updateDataValue( "bondState", null )
         log.error "${device.displayName}: getBondDeviceState(): Failed to get Bond state data"
@@ -228,6 +232,7 @@ void configure() {
     } else {
         log.error "${device.displayName}: configure() failed to get fan max speed"
     }
+    getBondDeviceState() /* Detects and loads Breeze parameters if present */
     loadSupportedFanSpeeds( max )
     if ( state.maxSpeed != null ) {
         wipeStateData( 1 )
@@ -285,6 +290,8 @@ void loadSupportedFanSpeeds( int maxSpeedN ) {
         logDebug "loadSupportedFanSpeeds() Found new speed: ${newSpeedS}"
         fanSpeeds = fanSpeeds + [ newSpeedS ]
     }
+    if ( device.currentValue( "bondBreezeMode" ) != null )
+        fanSpeeds =  fanSpeeds.reverse() + [ "auto" ]
     speedList = fanSpeeds.join( "," )
     logDebug "loadSupportedFanSpeeds() fanSpeeds = [${speedList},off,on]"
     sendEvent(name: "supportedFanSpeeds", value: groovy.json.JsonOutput.toJson(fanSpeeds.reverse() + ["auto", "off", "on"]))
@@ -336,7 +343,10 @@ def setBreezeParameters( mean=50, var=50 ) {
 
 def getBreezeState() {
     def bondState = getBondDeviceState()
-    return bondState.breeze[0]
+    if ( bondState.breeze == null )
+        return null
+    else
+        return bondState.breeze[0]
 }
 
 def getDeviceSpeed() {
@@ -357,6 +367,10 @@ def toggleBreeze( force="" ) {
         return
     }
     def breezeState = getBreezeState()
+    if ( breezeState == null ) {
+        log.warn "${device.displayName}: toggleBreeze(): Device does not support Breeze mode"
+        return
+    }
     def targetState = "BreezeOn"
     if ( breezeState ) {
         targetState = "BreezeOff"
@@ -373,6 +387,19 @@ def toggleBreeze( force="" ) {
     } else {
         off()
     }
+}
+
+def runAction( action="", parameters="" ) {
+    def myId = getMyBondId()
+    if ( action == "" ) {
+        log.error "${device.displayName}: runAction(): No action provided"
+        return
+    }
+    if ( parameters == "" )
+        result = parent.executeAction( myId, action )
+    else
+        result = parent.executeAction( myId, action, parameters )
+    log.info "${device.displayName}: runAction(): action: (${action}) parameters: (${parameters}) result: ${result}"
 }
 
 def on() {
