@@ -26,12 +26,15 @@ metadata {
         attribute "bondBreezeAverage", "integer"
         attribute "bondBreezeSupport", "integer"
         attribute "bondBreezeVariability", "integer"
+        attribute "bondDirectionSupport", "integer"
 
         command "configure"
         /*
         command "fixPower", [[name:"Power*", type: "ENUM", description: "Power", constraints: ["off","on"] ] ]
         command "fixSpeed", [[name:"Speed*", type: "ENUM", description: "Speed", constraints: ["off","low", "medium-low", "medium", "medium-high", "high", "on"] ] ]
+        command "fixDirection", [ [ name:"Direction*", type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
         */
+        command "setDirection", [ [ name:"Direction",  type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
         command "toggle"
         command "queryDevice"
         command "wipeStateData"
@@ -132,6 +135,10 @@ def getBondDeviceState() {
         } else {
             sendEvent(name:"bondBreezeSupport", value:"0")
         }
+        if ( bondState.direction != null )
+            sendEvent(name:"bondDirectionSupport", value:"1")
+        else
+            sendEvent(name:"bondDirectionSupport", value:"0")
     } else {
         device.updateDataValue( "bondState", null )
         log.error "${device.displayName}: getBondDeviceState(): Failed to get Bond state data"
@@ -256,6 +263,8 @@ void wipeStateData( int silent=0 ) {
     device.deleteCurrentState( "bondBreezeAverage" )
     device.deleteCurrentState( "bondBreezeSupport" )
     device.deleteCurrentState( "bondBreezeVariability" )
+    device.deleteCurrentState( "bondDirectionSupport" )
+    device.deleteCurrentState( "supportedFanSpeeds" )
     
     def dataValues = device.getData()
     String[] dvalues = []
@@ -444,9 +453,8 @@ void setSpeed( String speed ) {
         off()
         return
     }
-    if ( device.currentValue( "bondBreezeSupport" ) > 0 ) {
+    if ( device.currentValue( "bondBreezeSupport" ) > 0 )
         parent.executeAction( getMyBondId(), "BreezeOff" )
-    }
     sendEvent(name:"bondBreezeMode", value:"0")
     parent.handleFanSpeed(device, speed)
 }
@@ -482,6 +490,24 @@ void cycleSpeed() {
     newSpeedS = parent.translateBondFanSpeedToHE( device, maxSpeedN, newSpeedN )
     logDebug "cycleSpeed(): New: curSpeedN: ${curSpeedN}, newSpeedN: ${newSpeedN}, maxSpeedN: ${maxSpeedN}, newSpeedS: ${newSpeedS}"
     setSpeed( newSpeedS )
+}
+
+def setDirection( direction ) {
+    chkConfigure()
+    def bds = device.currentValue( "bondDirectionSupport" )
+    
+    if ( bds == null ) {
+        log.warn "setDirection(): bondDirectionSupport is null, ran configure(), try again."
+        return
+    }
+    
+    logDebug "${device.displayName}: setDirection(): Bond Direction Support: ${bds}"
+    if ( bds == "1" ) {
+        logDebug "setDirection(): Calling handleDirection( ${device}, ${direction} )"
+        parent.handleDirection( device, direction )
+    } else {
+        log.warn "setDirection(): Device does not seem to support direction through the Bond API"
+    }
 }
 
 void fixPower( power ) {
