@@ -8,8 +8,9 @@
  *  Oct 18, 2024 - Implmented breeze functionality and data/device debug support, aka queryDevice()
  *  Oct 23, 2024 - Fixed issue for fans without Breeze support and added runAction()
  *  Oct 23, 2024 - Merge BOND_Fan_With_Direction_v2 with BOND_Fan_v2
+ *  Oct 23, 2024 - Clean up queryDevice()/queryBondAPI(). Add updateBondState command.
  *
- *  VERSION 202410231145
+ *  VERSION 202410241000
  */
 
 metadata {
@@ -38,6 +39,7 @@ metadata {
         command "fixDirection", [ [ name:"Direction*", type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
         */
         command "setDirection", [ [ name:"Direction",  type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
+        command "updateBondState"
         command "rebootBond"
         command "toggle"
         command "queryDevice"
@@ -103,12 +105,12 @@ def rebootBond() {
     ]
     def bondReboot = getHttpData( params )
     if ( bondReboot != null ) {
-        device.updateDataValue( "bondReboot", bondProperties.toMapString() )
+        device.updateDataValue( "bondReboot", bondReboot.toMapString() )
     } else {
         device.updateDataValue( "bondReboot", null )
         log.error "${device.displayName}: bondReboot(): Failed to reboot Bond. Command may not be implemented on controller."
     }
-    return bondProperties
+    return bondReboot
 }
 
 def getBondDeviceData() {
@@ -158,6 +160,20 @@ def getBondDeviceState() {
             sendEvent( name:"bondDirectionSupport", value:1 )
         else
             sendEvent( name:"bondDirectionSupport", value:0 )
+        if ( bondState.power != null ) {
+            if ( bondState.power ) {
+                if ( device.currentValue( "switch" ) == "off" ) {
+                    sendEvent( name: "switch", value: "on",  type: "physical", descriptionText: "Bond fan state update 'on'"  )
+                    def curSpeedS = translateBondFanSpeedToHE(fan, state.fanProperties[fan].max_speed ?: 3, bondState.speed)
+                    device.sendEvent( name: "speed",  value: curSpeedS, descriptionText: "Bond fan speed state update '${curSpeedS}'" )
+                }
+            } else {
+                if ( device.currentValue( "switch" ) == "on" ) {
+                    sendEvent( name: "switch", value: "off", type: "physical", descriptionText: "Bond fan state update 'off'" )
+                    sendEvent( name: "speed",  value: "off", descriptionText: "Bond fan speed state update 'off'"  )
+                }
+            }
+        }
     } else {
         device.updateDataValue( "bondState", null )
         log.error "${device.displayName}: getBondDeviceState(): Failed to get Bond state data"
@@ -227,24 +243,59 @@ def getBondDeviceCommands() {
 }
 
 def queryBondAPI() {
+    String message = ""
+
     sendEvent(name:"queryStatus", value:"Step 1/10 Running configure()...")
     chkConfigure()
+
     sendEvent(name:"queryStatus", value:"Step 2/10 Getting Bond version data...")
     getBondVersion()
+
     sendEvent(name:"queryStatus", value:"Step 3/10 Getting Bond device data...")
-    getBondDeviceData()
+    def bondDevice = getBondDeviceData()
+
     sendEvent(name:"queryStatus", value:"Step 4/10 Getting Bond device properties...")
-    getBondDeviceProperties()
+    if ( bondDevice.properties == null ) {
+        message = "Bond controller does not implement the properties endpoint"
+        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        device.updateDataValue( "bondProperties", message )
+    } else {
+        def bondProperties = getBondDeviceProperties()
+    }
+
     sendEvent(name:"queryStatus", value:"Step 5/10 Getting Bond device state...")
-    getBondDeviceState()
+    def bondState = getBondDeviceState()
+
     sendEvent(name:"queryStatus", value:"Step 6/10 Getting Bond device actions...")
-    getBondDeviceActions()
+    def bondActions = getBondDeviceActions()
+
     sendEvent(name:"queryStatus", value:"Step 7/10 Getting Bond device commands...")
-    getBondDeviceCommands()
+    if ( bondDevice.commands == null ) {
+        message = "Bond controller does not implement the commands endpoint"
+        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        device.updateDataValue( "bondCommands", message )
+    } else {
+        def bondCommands = getBondDeviceCommands()
+    }
+
     sendEvent(name:"queryStatus", value:"Step 8/10 Getting Bond power cycle state...")
-    getBondDevicePowerCycleState()
+    if ( bondDevice.power_cycle_state == null ) {
+        message = "Bond controller does not implement the power_cycle_state endpoint"
+        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        device.updateDataValue( "bondPowerCycleState", message )
+    } else {
+        def bondPowerCycleState = getBondDevicePowerCycleState()
+    }
+
     sendEvent(name:"queryStatus", value:"Step 9/10 Getting Bond remote address and learn data...")
-    getBondDeviceRemoteAddressAndLearn()
+    if ( bondDevice.addr == null ) {
+        message = "Bond controller does not implement the addr endpoint"
+        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        device.updateDataValue( "bondAddr", message )
+    } else {
+        def bondAddr = getBondDeviceRemoteAddressAndLearn()
+    }
+
     sendEvent(name:"queryStatus", value:"Step 10/10 Query complete -<br>REFRESH the page.")
     device.updateDataValue( "lastBondApiQuery", new Date().format("MM/dd/yyyy HH:mm:ss '('ZZZZZ/zzz')'") )
 }
@@ -261,7 +312,7 @@ void configure() {
     } else {
         log.error "${device.displayName}: configure() failed to get fan max speed"
     }
-    getBondDeviceState() /* Detects and loads Breeze parameters if present */
+    getBondDeviceState()
     loadSupportedFanSpeeds( max )
     if ( state.maxSpeed != null ) {
         wipeStateData( 1 )
@@ -272,6 +323,10 @@ void chkConfigure() {
     if ( device.currentValue('bondFanMaxSpeed') == null ) {
         configure()
     }
+}
+
+void updateBondState () {
+    getBondDeviceState()
 }
 
 void wipeStateData( int silent=0 ) {
