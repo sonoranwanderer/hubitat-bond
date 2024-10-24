@@ -11,7 +11,7 @@
  *  Oct 23, 2024 - Clean up queryDevice()/queryBondAPI(). Add updateBondState command.
  *  Oct 23, 2024 - made getMaxSpeed() more resilient
  *
- *  VERSION 202410241335
+ *  VERSION 202410241400
  */
 
 metadata {
@@ -364,7 +364,7 @@ int getMaxSpeed( devId ) {
             maxSpeedN = parent.state.fanProperties.get( devId ).get( "max_speed" )
             logDebug "getMaxSpeed(): got max_speed from fanProperties"
         } catch ( err ) {
-            log.warn "${device.displayName}: getMaxSpeed(): parent.state.fanProperties get max_speed failed (${err}), getting fan properties directly..."
+            log.warn "${device.displayName}: getMaxSpeed(): parent.state.fanProperties get max_speed failed (${err.message}), getting fan properties directly..."
             fallBack = 1
         }
     } else {
