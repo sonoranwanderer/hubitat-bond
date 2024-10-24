@@ -530,35 +530,34 @@ void fixDirection( direction ) {
 
 /* Child (light) device support */
 
-void handleLightOn(device) {
-    parent.handleLightOn(device)
+void handleLightOn( device ) {
+    parent.handleLightOn( device )
 }
 
-void handleLightOff(device) {
-    parent.handleLightOff(device)
+void handleLightOff( device ) {
+    parent.handleLightOff( device )
 }
 
-void handleLightLevel(device, level)
-{
-    parent.handleLightLevel(device, level)
+void handleLightLevel( device, level ) {
+    parent.handleLightLevel( device, level )
 }
 
-void handleDim(device, duration) {
-    parent.handleDim(device, duration)
+void handleDim( device, duration ) {
+    parent.handleDim( device, duration )
 }
 
-void handleStartDimming(device) {
-    parent.handleStartDimming(device)
+void handleStartDimming( device ) {
+    parent.handleStartDimming( device )
 }
 
-void handleStopDimming(device) {
-    parent.handleStopDimming(device)
+void handleStopDimming( device ) {
+    parent.handleStopDimming( device )
 }
 
-void fixLightPower(device, power) {
-    parent.fixLightPower(device, power)
+void fixLightPower( device, power ) {
+    parent.fixLightPower( device, power )
 }
 
-void fixLightLevel(device, level) {
-    parent.fixLightLevel(device, level)
+void fixLightLevel( device, level ) {
+    parent.fixLightLevel( device, level )
 }

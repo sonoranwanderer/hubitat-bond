@@ -17,7 +17,7 @@ metadata {
         name:      "BOND Fan With Direction v2", 
         namespace: "bond", 
         author:    "gatewoodgreen@gmail.com",
-        importUrl: "https://github.com/sonoranwanderer/hubitat-bond/raw/refs/heads/master/drivers/BOND_Fan_With_Direction_v2.groovy"
+        importUrl: "https://raw.githubusercontent.com/sonoranwanderer/hubitat-bond/refs/heads/master/drivers/BOND_Fan_With_Direction_v2.groovy"
     ) {
         capability "Switch"
         capability "FanControl"
@@ -530,35 +530,34 @@ void fixDirection( direction ) {
 
 /* Child (light) device support */
 
-void handleLightOn(device) {
-    parent.handleLightOn(device)
+void handleLightOn( device ) {
+    parent.handleLightOn( device )
 }
 
-void handleLightOff(device) {
-    parent.handleLightOff(device)
+void handleLightOff( device ) {
+    parent.handleLightOff( device )
 }
 
-void handleLightLevel(device, level)
-{
-    parent.handleLightLevel(device, level)
+void handleLightLevel( device, level ) {
+    parent.handleLightLevel( device, level )
 }
 
-void handleDim(device, duration) {
-    parent.handleDim(device, duration)
+void handleDim( device, duration ) {
+    parent.handleDim( device, duration )
 }
 
-void handleStartDimming(device) {
-    parent.handleStartDimming(device)
+void handleStartDimming( device ) {
+    parent.handleStartDimming( device )
 }
 
-void handleStopDimming(device) {
-    parent.handleStopDimming(device)
+void handleStopDimming( device ) {
+    parent.handleStopDimming( device )
 }
 
-void fixLightPower(device, power) {
-    parent.fixLightPower(device, power)
+void fixLightPower( device, power ) {
+    parent.fixLightPower( device, power )
 }
 
-void fixLightLevel(device, level) {
-    parent.fixLightLevel(device, level)
+void fixLightLevel( device, level ) {
+    parent.fixLightLevel( device, level )
 }
