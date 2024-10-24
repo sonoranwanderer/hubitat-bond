@@ -373,8 +373,7 @@ int getMaxSpeed( devId ) {
     }
     
     if ( fallBack ) {
-        def myId = getMyBondId()
-        def bondProperties = getBondDeviceProperties( myId )
+        def bondProperties = getBondDeviceProperties()
         if ( bondProperties == null ) {
             log.warn "${device.displayName}: getMaxSpeed(): getBondDeviceProperties failed, guessing max_speed is 3"
         } else {
