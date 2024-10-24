@@ -3,17 +3,20 @@
  *
  *  Copyright 2019-2020 Dominick Meglio
  *  Additonal Copyright 2024 Gatewood Green
- *  Oct 23, 2024 - Implemented supportedFanSpeeds & cycleSpeed(), fixing Google Home integration breakage with Hubitat 2.3.9.192
- *               - Implmented auto configuration and breeze functionality and data/device debug support, aka queryDevice()
+ *  Oct 12, 2024 - Implemented supportedFanSpeeds & cycleSpeed(), fixing Google Home integration breakage with Hubitat 2.3.9.192
+ *  Oct 13, 2024 - Implmented auto configuration
+ *  Oct 18, 2024 - Implmented breeze functionality and data/device debug support, aka queryDevice()
  *  Oct 23, 2024 - Fixed issue for fans without Breeze support and added runAction()
+ *  Oct 23, 2024 - Merge BOND_Fan_With_Direction_v2 with BOND_Fan_v2
  *
+ *  VERSION 202410231105
  */
 
 metadata {
     definition (
-        name: "BOND Fan With Direction v2", 
+        name:      "BOND Fan With Direction v2", 
         namespace: "bond", 
-        author: "gatewoodgreen@gmail.com",
+        author:    "gatewoodgreen@gmail.com",
         importUrl: "https://github.com/sonoranwanderer/hubitat-bond/raw/refs/heads/master/drivers/BOND_Fan_With_Direction_v2.groovy"
     ) {
         capability "Switch"
@@ -39,7 +42,7 @@ metadata {
         command "queryDevice"
         command "wipeStateData"
         command "toggleBreeze"
-        command "runAction",          [ [ name:"BondAction*",  type:"STRING", description:"Bond Device Action"],
+        command "runAction",          [ [ name:"BondAction*",  type:"STRING", description:"Bond Device Action" ],
                                         [ name:"Arguments",    type:"STRING", description:"Action Arguments" ] ]
         command "setBreezeParameters",[ [ name:"AverageSpeed*",type:"NUMBER", description:"Average Speed" ],
                                         [ name:"Variability*", type:"NUMBER", description:"Speed Variability" ] ]
@@ -128,17 +131,17 @@ def getBondDeviceState() {
     if ( bondState != null ) {
         device.updateDataValue( "bondState", bondState.toMapString() )
         if ( bondState.breeze != null ) {
-            sendEvent(name:"bondBreezeMode", value:"${bondState.breeze[0]}")
-            sendEvent(name:"bondBreezeAverage", value:"${bondState.breeze[1]}")
-            sendEvent(name:"bondBreezeSupport", value:"1")
-            sendEvent(name:"bondBreezeVariability", value:"${bondState.breeze[2]}")
+            sendEvent( name:"bondBreezeMode", value:"${bondState.breeze[0]}" )
+            sendEvent( name:"bondBreezeAverage", value:"${bondState.breeze[1]}" )
+            sendEvent( name:"bondBreezeSupport", value:1 )
+            sendEvent( name:"bondBreezeVariability", value:"${bondState.breeze[2]}" )
         } else {
-            sendEvent(name:"bondBreezeSupport", value:"0")
+            sendEvent( name:"bondBreezeSupport", value:0 )
         }
         if ( bondState.direction != null )
-            sendEvent(name:"bondDirectionSupport", value:"1")
+            sendEvent( name:"bondDirectionSupport", value:1 )
         else
-            sendEvent(name:"bondDirectionSupport", value:"0")
+            sendEvent( name:"bondDirectionSupport", value:0 )
     } else {
         device.updateDataValue( "bondState", null )
         log.error "${device.displayName}: getBondDeviceState(): Failed to get Bond state data"
@@ -202,31 +205,31 @@ def getBondDeviceCommands() {
         device.updateDataValue( "bondCommands", bondCommands.toMapString() )
     } else {
         device.updateDataValue( "bondCommands", null )
-        log.warn "${device.displayName}: getBondDeviceCommands(): Failed to get Bond commands data"
+        log.warn "${device.displayName}: getBondDeviceCommands(): Failed to get Bond commands data (this is expected as is the preceding 404 error)"
     }
     return bondCommands
 }
 
 def queryBondAPI() {
-    sendEvent(name:"queryStatus", value:"Running configure()...")
+    sendEvent(name:"queryStatus", value:"Step 1/10 Running configure()...")
     chkConfigure()
-    sendEvent(name:"queryStatus", value:"Getting Bond version data...")
+    sendEvent(name:"queryStatus", value:"Step 2/10 Getting Bond version data...")
     getBondVersion()
-    sendEvent(name:"queryStatus", value:"Getting Bond device data...")
+    sendEvent(name:"queryStatus", value:"Step 3/10 Getting Bond device data...")
     getBondDeviceData()
-    sendEvent(name:"queryStatus", value:"Getting Bond device properties...")
+    sendEvent(name:"queryStatus", value:"Step 4/10 Getting Bond device properties...")
     getBondDeviceProperties()
-    sendEvent(name:"queryStatus", value:"Getting Bond device state...")
+    sendEvent(name:"queryStatus", value:"Step 5/10 Getting Bond device state...")
     getBondDeviceState()
-    sendEvent(name:"queryStatus", value:"Getting Bond device actions...")
+    sendEvent(name:"queryStatus", value:"Step 6/10 Getting Bond device actions...")
     getBondDeviceActions()
-    sendEvent(name:"queryStatus", value:"Getting Bond device commands...")
+    sendEvent(name:"queryStatus", value:"Step 7/10 Getting Bond device commands...")
     getBondDeviceCommands()
-    sendEvent(name:"queryStatus", value:"Getting Bond power cycle state...")
+    sendEvent(name:"queryStatus", value:"Step 8/10 Getting Bond power cycle state...")
     getBondDevicePowerCycleState()
-    sendEvent(name:"queryStatus", value:"Getting Bond remote address and learn data...")
+    sendEvent(name:"queryStatus", value:"Step 9/10 Getting Bond remote address and learn data...")
     getBondDeviceRemoteAddressAndLearn()
-    sendEvent(name:"queryStatus", value:"Query complete -<br>REFRESH the page.")
+    sendEvent(name:"queryStatus", value:"Step 10/10 Query complete -<br>REFRESH the page.")
     device.updateDataValue( "lastBondApiQuery", new Date().format("MM/dd/yyyy HH:mm:ss '('ZZZZZ/zzz')'") )
 }
 
@@ -372,7 +375,12 @@ def getDeviceSpeed() {
 
 def toggleBreeze( force="" ) {
     chkConfigure()
-    if ( device.currentValue( "bondBreezeSupport" ) < 1 ) {
+    if ( device.currentValue( "bondBreezeSupport" ) == null ) {
+        log.warn "toggleBreeze(): bondBreezeSupport is null, ran configure(), try again."
+        return
+    }
+    int bondBreezeSupport = device.currentValue( "bondBreezeSupport" ).toInteger()
+    if ( bondBreezeSupport < 1 ) {
         log.warn "${device.displayName}: toggleBreeze(): Device does not support Breeze mode"
         return
     }
@@ -402,7 +410,7 @@ def toggleBreeze( force="" ) {
     }
 }
 
-def runAction( action="", parameters="" ) {
+void runAction( action="", parameters="" ) {
     def myId = getMyBondId()
     if ( action == "" ) {
         log.error "${device.displayName}: runAction(): No action provided"
@@ -415,7 +423,7 @@ def runAction( action="", parameters="" ) {
     log.info "${device.displayName}: runAction(): action: (${action}) parameters: (${parameters}) result: ${result}"
 }
 
-def on() {
+void on() {
     chkConfigure()
     parent.handleOn( device )
     if ( state.lastSpeed != null ) {
@@ -426,26 +434,18 @@ def on() {
     log.info "${device.displayName}: Turned on"
 }
 
-def off() {
+void off() {
     parent.handleOff(device)
     parent.executeAction( getMyBondId(), "BreezeOff" )
     sendEvent(name:"bondBreezeMode", value:"0")
     log.info "${device.displayName}: Turned off"
 }
 
-def toggle() {
+void toggle() {
     if (device.currentValue("switch") == "on")
         off()
     else
         on()
-}
-
-def handleLightOn(device) {
-    parent.handleLightOn(device)
-}
-
-def handleLightOff(device) {
-    parent.handleLightOff(device)
 }
 
 void setSpeed( String speed ) {
@@ -500,17 +500,15 @@ void cycleSpeed() {
     setSpeed( newSpeedS )
 }
 
-def setDirection( direction ) {
+void setDirection( direction ) {
     chkConfigure()
-    def bds = device.currentValue( "bondDirectionSupport" )
-    
-    if ( bds == null ) {
+    if ( device.currentValue( "bondDirectionSupport" ) == null ) {
         log.warn "setDirection(): bondDirectionSupport is null, ran configure(), try again."
         return
     }
-    
-    logDebug "${device.displayName}: setDirection(): Bond Direction Support: ${bds}"
-    if ( bds == "1" ) {
+    int bondDirectionSupport = device.currentValue( "bondDirectionSupport" ).toInteger()
+    logDebug "setDirection(): Bond Direction Support: ${bondDirectionSupport}"
+    if ( bondDirectionSupport > 0 ) {
         logDebug "setDirection(): Calling handleDirection( ${device}, ${direction} )"
         parent.handleDirection( device, direction )
     } else {
@@ -518,39 +516,49 @@ def setDirection( direction ) {
     }
 }
 
-def handleLightLevel(device, level)
+void fixPower( power ) {
+    parent.fixPowerState( device, power )
+}
+
+void fixSpeed( speed ) {
+    parent.fixFanSpeed( device, speed )
+}
+
+void fixDirection( direction ) {
+    parent.fixDirection( device, direction )
+}
+
+/* Child (light) device support */
+
+void handleLightOn(device) {
+    parent.handleLightOn(device)
+}
+
+void handleLightOff(device) {
+    parent.handleLightOff(device)
+}
+
+void handleLightLevel(device, level)
 {
     parent.handleLightLevel(device, level)
 }
 
-def handleDim(device, duration) {
+void handleDim(device, duration) {
     parent.handleDim(device, duration)
 }
 
-def handleStartDimming(device) {
+void handleStartDimming(device) {
     parent.handleStartDimming(device)
 }
 
-def handleStopDimming(device) {
+void handleStopDimming(device) {
     parent.handleStopDimming(device)
 }
 
-def fixPower(power) {
-    parent.fixPowerState(device, power)
-}
-
-def fixSpeed(speed) {
-    parent.fixFanSpeed(device, speed)
-}
-
-def fixDirection(direction) {
-    parent.fixDirection(device, direction)
-}
-
-def fixLightPower(device, power) {
+void fixLightPower(device, power) {
     parent.fixLightPower(device, power)
 }
 
-def fixLightLevel(device, level) {
+void fixLightLevel(device, level) {
     parent.fixLightLevel(device, level)
 }
