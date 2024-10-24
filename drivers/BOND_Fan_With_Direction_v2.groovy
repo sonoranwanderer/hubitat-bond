@@ -376,11 +376,9 @@ int getMaxSpeed( devId ) {
         def bondProperties = getBondDeviceProperties()
         if ( bondProperties == null ) {
             log.warn "${device.displayName}: getMaxSpeed(): getBondDeviceProperties failed, guessing max_speed is 3"
-            maxSpeedN = 3 /* just guess */
         } else {
             if ( bondProperties.max_speed == null ) {
                 log.warn "${device.displayName}: getMaxSpeed(): bondProperties.max_speed is null, guessing max_speed is 3"
-                maxSpeedN = 3 /* just guess */
             } else {
                 maxSpeedN = bondProperties.max_speed
                 logDebug "getMaxSpeed(): got max_speed from bondProperties"
@@ -388,7 +386,7 @@ int getMaxSpeed( devId ) {
         }
     }
     
-    if ( maxSpeedN == null ) {
+    if ( maxSpeedN == null || maxSpeedN == 0 ) {
         log.warn "${device.displayName}: getMaxSpeed(): Failed to get max_speed from all sources, guessing 3"
         maxSpeedN = 3 /* just guess */
     }
