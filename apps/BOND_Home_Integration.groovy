@@ -6,7 +6,7 @@
  *  Copyright 2019-2020 Dominick Meglio
  *  Additional copyright 2024 Gatewood Green
  *
- *  Version 202410231145
+ *  VERSION 202410231145
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
