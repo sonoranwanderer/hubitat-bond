@@ -5,8 +5,9 @@
  *
  *  Copyright 2019-2020 Dominick Meglio
  *  Additional copyright 2024 Gatewood Green
+ *  Additional copyright 2024 @terminal3
  *
- *  VERSION 202410241415
+ *  VERSION 202410242015
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
@@ -23,14 +24,14 @@
  * 2024.10.20 - Fixed component light state updates to Hubitat device
  * 2024.10.21 - Device power/switch local state changes now report as type: "physical", light local state brightness changes as unit: "%"
  * 2024.10.23 - Fixed potential fan speed mapping issues, replaced the binary Debug log option switch in the app to support levels of logging
- * 2024.10.24 - Improved API error reporting
+ * 2024.10.24 - Improved API error reporting, incorporate @terminal3's Additional Motorized Shaed commands (openNext, closeNext)
  *
  */
 
 definition(
     name: "BOND Home Integration",
     namespace: "dcm.bond",
-    author: "Dominick Meglio",
+    author: "Gatewood Green",
     description: "Connects to BOND Home hub",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
@@ -912,12 +913,34 @@ def handleOpen(device)
     }
 }
 
+def handleOpenNext(device)
+{
+    def bondId = getBondIdFromDevice(device)
+    logDebug "Handling OpenNext event for ${bondId}"
+
+    if (executeAction(bondId, "OpenNext"))
+    {
+        device.sendEvent(name: "windowShade", value: "open")
+    }
+}
+
 def handleClose(device)
 {
     def bondId = getBondIdFromDevice(device)
     logDebug "Handling Close event for ${bondId}"
-    
-    if (executeAction(bondId, "Close")) 
+
+    if (executeAction(bondId, "Close"))
+    {
+        device.sendEvent(name: "windowShade", value: "closed")
+    }
+}
+
+def handleCloseNext(device)
+{
+    def bondId = getBondIdFromDevice(device)
+    logDebug "Handling CloseNext event for ${bondId}"
+
+    if (executeAction(bondId, "CloseNext"))
     {
         device.sendEvent(name: "windowShade", value: "closed")
     }
@@ -1529,7 +1552,10 @@ def checkHttpResponse(action, resp) {
     }
     else
     {
-        log.error "${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}"
+        if ( resp.getData() == null )
+            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - (Bond returned no response data)"
+        else
+            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}"
         return false
     }
 }

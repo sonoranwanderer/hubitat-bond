@@ -11,8 +11,9 @@
  *  Oct 23, 2024 - Clean up queryDevice()/queryBondAPI(). Add updateBondState command.
  *  Oct 23, 2024 - made getMaxSpeed() more resilient
  *  Oct 23, 2024 - made getMyBondId() more resilient
+ *  Oct 23, 2024 - minor error reporting improvements
  *
- *  VERSION 202410241615
+ *  VERSION 202410242015
  */
 
 metadata {
@@ -64,23 +65,34 @@ void logDebug(String msg) {
     }
 }
 
+boolean checkHttpResponse(action, resp) {
+    if ( resp.status == 200 || resp.status == 201 || resp.status == 204 ) {
+        return true
+    } else if ( resp.status == 400 || resp.status == 401 || resp.status == 404 || resp.status == 409 || resp.status == 500 ) {
+        log.error "${device.displayName}: checkHttpResponse(): ${action}: Bond error response: ${resp.status} - ${resp.getData()}"
+        return false
+    } else {
+        if ( resp.getData() == null )
+            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - (Bond returned no response data)"
+        else
+            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}"
+        return false
+    }
+}
+
 def getHttpData( Map params ) {
-    def result = null
+    def result         = null
     params.uri         = "http://${parent.hubIp}"
     params.contentType = "application/json"
     params.headers     = [ 'BOND-Token': parent.hubToken ]
-    try
-    {
+    try {
         httpGet(params) { resp ->
-            if (parent.checkHttpResponse("getHttpResult", resp))
-            {
+            if (checkHttpResponse( "getHttpData", resp ) ) {
                 result = resp.data
             }
         }
-    }
-    catch (e)
-    {
-        parent.checkHttpResponse("getHttpResult", e.getResponse())
+    } catch (err) {
+        checkHttpResponse( "getHttpData", err.getResponse() )
     }
     return result
 }
@@ -147,7 +159,10 @@ def getBondDeviceProperties() {
 
 def getBondDeviceState() {
     def myId = getMyBondId()
-    def bondState = parent.getState( myId )
+    def params = [
+        path: "/v2/devices/${myId}/state"
+    ]
+    def bondState = getHttpData( params )
     if ( bondState != null ) {
         device.updateDataValue( "bondState", bondState.toMapString() )
         if ( bondState.breeze != null ) {
