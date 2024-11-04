@@ -12,8 +12,9 @@
  *  Oct 23, 2024 - made getMaxSpeed() more resilient
  *  Oct 23, 2024 - made getMyBondId() more resilient
  *  Oct 23, 2024 - minor error reporting improvements
+ *  Nov 04, 2024 - logging improvements, fix Hubitat/groovy data type issues detecting Breeze support
  *
- *  VERSION 202410242015
+ *  VERSION 202411040900
  */
 
 metadata {
@@ -55,27 +56,48 @@ metadata {
     }
 
     preferences {
-        input name: "debugEnable", type: "bool", title: "Enable debug logging", defaultValue: false
+        input name: "logLevel", type: "enum", title: "Logging Level", defaultValue: 3, options: [3: "info", 2:"debug", 1:"trace"], required: true
     }
 }
 
-void logDebug(String msg) {
-    if (debugEnable) {
-        log.debug( "${device.label?device.label:device.name}: ${msg}" )
+void logEvent ( message="", level="info" ) {    
+    Map     logLevels = [ error: 5, warn: 4, info: 3, debug: 2, trace: 1 ]
+    Integer msgLevelN = logLevels[ level ].toInteger()
+    String  name      = device.displayName.toString()
+    Integer logLevelN = 0
+
+    if ( device.getSetting( "logLevel" ) == null ) {
+        device.updateSetting( "logLevel", "3" ) /* Send string to imitate what the preference dialog will do for enum numeric keys */
+        log.info "${name}: logEvent(): set default log level to 3 (info)"
+        logLevelN = 3
+    } else {
+        logLevelN = device.getSetting( "logLevel" ).toInteger()
     }
+    if ( msgLevelN == null || msgLevelN < 1 || msgLevelN > 5 ) {
+        msgLevelN = 3
+        level     = "info"
+    }
+    if ( msgLevelN >= logLevelN )
+        log."${level}" "${name}: ${message}"
 }
 
-boolean checkHttpResponse(action, resp) {
+void logDebug( String msg ) {
+    /* Legacy compatibility */
+    logEvent( msg, "debug" )
+}
+
+boolean checkHttpResponse( action, resp ) {
     if ( resp.status == 200 || resp.status == 201 || resp.status == 204 ) {
+        logEvent( "getHttpData(): status: ${resp.status}, data: ${resp.data}", "trace" )
         return true
     } else if ( resp.status == 400 || resp.status == 401 || resp.status == 404 || resp.status == 409 || resp.status == 500 ) {
-        log.error "${device.displayName}: checkHttpResponse(): ${action}: Bond error response: ${resp.status} - ${resp.getData()}"
+        logEvent( "checkHttpResponse(): ${action}: Bond error response: ${resp.status} - ${resp.getData()}", "warn" )
         return false
     } else {
         if ( resp.getData() == null )
-            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - (Bond returned no response data)"
+            logEvent( "checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - (Bond returned no response data)", "error" )
         else
-            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}"
+            logEvent( "checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}", "error" )
         return false
     }
 }
@@ -369,7 +391,10 @@ void wipeStateData( int silent=0 ) {
     device.deleteCurrentState( "bondBreezeVariability" )
     device.deleteCurrentState( "bondDirectionSupport" )
     device.deleteCurrentState( "supportedFanSpeeds" )
-    
+
+    device.removeSetting( "debugEnable" )
+    device.removeSetting( "logLevel" )
+
     def dataValues = device.getData()
     String[] dvalues = []
     dataValues.each { key, val ->
@@ -564,8 +589,11 @@ void on() {
 
 void off() {
     parent.handleOff(device)
-    parent.executeAction( getMyBondId(), "BreezeOff" )
-    sendEvent(name:"bondBreezeMode", value:"0")
+    logEvent( "off(): Breeze Support (${device.currentValue( "bondBreezeSupport" ).toInteger()})", "trace" )
+    if ( device.currentValue( "bondBreezeSupport" ).toInteger() > 0 ) {
+        parent.executeAction( getMyBondId(), "BreezeOff" )
+        sendEvent(name:"bondBreezeMode", value:"0")
+    }
     log.info "${device.displayName}: Turned off"
 }
 
@@ -577,21 +605,25 @@ void toggle() {
 }
 
 void setSpeed( String speed ) {
-    log.info "${device.displayName}: Setting speed to ${speed}"
+    logEvent( "setSpeed(): Setting speed to ${speed}", "info" )
+    logEvent( "setSpeed(): Breeze Support (${device.currentValue( "bondBreezeSupport" ).toInteger()})", "trace" )
     
     if (speed != "off" && speed != "on" && speed != "auto" )
         state.lastSpeed = speed
     
     if ( speed == "auto" ) {
-        toggleBreeze( "on" )
+        if ( device.currentValue( "bondBreezeSupport" ).toInteger() > 0 ) {
+            toggleBreeze( "on" )
+        }
         return
     } else if ( speed == "off" ) {
         off()
         return
     }
-    if ( device.currentValue( "bondBreezeSupport" ) > 0 )
+    if ( device.currentValue( "bondBreezeSupport" ).toInteger() > 0 ) {
         parent.executeAction( getMyBondId(), "BreezeOff" )
-    sendEvent(name:"bondBreezeMode", value:"0")
+        sendEvent(name:"bondBreezeMode", value:"0")
+    }
     parent.handleFanSpeed(device, speed)
 }
 

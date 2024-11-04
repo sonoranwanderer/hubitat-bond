@@ -7,7 +7,7 @@
  *  Additional copyright 2024 Gatewood Green
  *  Additional copyright 2024 @terminal3
  *
- *  VERSION 202410242015
+ *  VERSION 202411040900
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
@@ -25,6 +25,7 @@
  * 2024.10.21 - Device power/switch local state changes now report as type: "physical", light local state brightness changes as unit: "%"
  * 2024.10.23 - Fixed potential fan speed mapping issues, replaced the binary Debug log option switch in the app to support levels of logging
  * 2024.10.24 - Improved API error reporting, incorporate @terminal3's Additional Motorized Shaed commands (openNext, closeNext)
+ * 2024.11.04 - More debug logging
  *
  */
 
@@ -39,7 +40,6 @@ definition(
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
     documentationLink: "https://github.com/sonoranwanderer/hubitat-bond/blob/master/README.md"
 )
-
 
 preferences {
     page(name: "prefHub", title: "BOND")
@@ -139,8 +139,8 @@ def initialize() {
 }
 
 void logAppEvent ( message="", level="info" ) {
-    if ( level == "trace") {
-        if ( settings?.logLevel != "trace")
+    if ( level == "trace" ) {
+        if ( settings?.logLevel != "trace" )
             return
     } else if ( level == "debug" ) {
         if ( settings?.logLevel != "trace" && settings?.logLevel != "debug" )
@@ -1211,8 +1211,8 @@ def fixLightLevel(device, state) {
     }
 }
 
-def translateBondFanSpeedToHE(id, max_speeds, speed)
-{
+def translateBondFanSpeedToHE( id, max_speeds, speed ) {
+    logAppEvent( "translateBondFanSpeedToHE(): called with id=${id}, max_speeds=${max_speeds}, speed=${speed}", "trace" )
     def speedTranslations = 
     [
         10: [10: "high", 9: "high", 8: "medium-high", 7: "medium-high", 6: "medium", 5: "medium", 4: "medium-low", 3: "medium-low", 2: "low", 1: "low" ],
@@ -1226,19 +1226,18 @@ def translateBondFanSpeedToHE(id, max_speeds, speed)
         2:  [ 2: "high",                                                                                                            1: "low" ]
     ]
     
-    if (!speed.toString().isNumber())
+    if ( !speed.toString().isNumber() )
         return speed
         
-    if (max_speeds > 10 || speed > max_speeds)
-        return 0
-        
-    logDebug "${id} -> Translating ${speed}:${max_speeds} to HE ${speedTranslations[max_speeds][speed]}"
-        
+    if ( max_speeds > 10 || speed > max_speeds )
+        return "high"
+
+    logAppEvent( "translateBondFanSpeedToHE(): id=${id} -> Translating ${speed}:${max_speeds} to HE ${speedTranslations[max_speeds][speed]}", "debug" )
     return speedTranslations[max_speeds][speed]
 }
 
-def translateHEFanSpeedToBond(id, max_speeds, speed)
-{
+def translateHEFanSpeedToBond( id, max_speeds, speed ) {
+    logAppEvent( "translateHEFanSpeedToBond(): called with id=${id}, max_speeds=${max_speeds}, speed=${speed}", "trace" )
     if (speed.isNumber())
         return speed.toInteger()
 
@@ -1256,31 +1255,28 @@ def translateHEFanSpeedToBond(id, max_speeds, speed)
     ]
 
     if (max_speeds > 10)
-        return null
+        return 0
 
-    logDebug "${id} -> Translating ${speed}:${max_speeds} to BOND ${speedTranslations[max_speeds][speed]}"
-    return speedTranslations[max_speeds][speed]
+    logAppEvent( "translateHEFanSpeedToBond(): id=${id} -> Translating ${speed}:${max_speeds} to BOND ${speedTranslations[max_speeds][speed]}", "debug" )
+    return speedTranslations[max_speeds][speed].toInteger()
 }
 
 def handleFanSpeed(device, speed) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Fan Speed event for ${bondId}"
+    logAppEvent( "handleFanSpeed(): called for device=${bondId}, speed=${speed}", "debug" )
 
-    if (speed == "off")
-    {
-        if (handleOff(device))
-        {
-            device.sendEvent(name: "speed", value: "off")
+    if ( speed == "off" ) {
+        if ( handleOff( device ) ) {
+            device.sendEvent( name: "speed", value: "off" )
         }
-    }    
-    else if (speed == "on")
-        handleOn(device)
-    else
-    {
-        if (executeAction(bondId, "SetSpeed", translateHEFanSpeedToBond(bondId, state.fanProperties?.getAt(bondId)?.max_speed ?: 3, speed))) 
-        {
-            device.sendEvent(name: "switch", value: "on")
-            device.sendEvent(name: "speed", value: speed)
+    } else if ( speed == "on" ) {
+        handleOn( device )
+    } else {
+        def max_speed = state.fanProperties?.getAt( bondId )?.max_speed ?: 3
+        logAppEvent( "handleFanSpeed(): calling SetSpeed() with bondId=${bondId}, max_speed=${max_speed} speed=${speed}", "debug" )
+        if ( executeAction( bondId, "SetSpeed", translateHEFanSpeedToBond( bondId, max_speed, speed ) ) ) {
+            device.sendEvent( name: "switch", value: "on" )
+            device.sendEvent( name: "speed", value: speed )
         }
     }
 }
@@ -1431,6 +1427,7 @@ def hasAction(bondId, commandType) {
 }
 
 def executeAction(bondId, action) {
+    logAppEvent( "executeAction(): called with bondId='${bondId}', action='${action}'", "debug" )
     def params = [
         uri: "http://${hubIp}",
         path: "/v2/devices/${bondId}/actions/${action}",
@@ -1438,8 +1435,8 @@ def executeAction(bondId, action) {
         headers: [ 'BOND-Token': hubToken ],
         body: "{}"
     ]
+    logAppEvent( "executeAction(): params.uri='${params.uri}', params.path='${params.path}', params.headers='${params.headers}', params.body='${params.body}'", "trace" )
     def isSuccessful = false
-    logDebug "${bondId} -> calling action ${action}"
     try
     {
         httpPut(params) { resp ->
@@ -1461,6 +1458,7 @@ def executeAction(bondId, action) {
 }
 
 def executeAction(bondId, action, argument) {
+    logAppEvent( "executeAction(): called with bondId='${bondId}', action='${action}', argument='${argument}'", "debug" )
     def params = [
         uri: "http://${hubIp}",
         path: "/v2/devices/${bondId}/actions/${action}",
@@ -1468,8 +1466,8 @@ def executeAction(bondId, action, argument) {
         headers: [ 'BOND-Token': hubToken ],
         body: '{"argument": ' + argument +'}'
     ]
+    logAppEvent( "executeAction(): params.uri='${params.uri}', params.path='${params.path}', params.headers='${params.headers}', params.body='${params.body}'", "trace" )
     def isSuccessful = false
-    logDebug "calling action ${action} ${params.body}"
     try
     {
         httpPut(params) { resp ->
@@ -1547,15 +1545,15 @@ def checkHttpResponse(action, resp) {
         return true
     else if (resp.status == 400 || resp.status == 401 || resp.status == 404 || resp.status == 409 || resp.status == 500)
     {
-        log.error "${action}: Bond error response: ${resp.status} - ${resp.getData()}"
+        logAppEvent( "checkHttpResponse(): ${action}: Bond error response: ${resp.status} - ${resp.getData()}", "error" )
         return false
     }
     else
     {
         if ( resp.getData() == null )
-            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - (Bond returned no response data)"
+            logAppEvent( "checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - (Bond returned no response data)", "error" )
         else
-            log.error "${device.displayName}: checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}"
+            logAppEvent( "checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}", "error" )
         return false
     }
 }
