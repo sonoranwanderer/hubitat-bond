@@ -7,7 +7,7 @@
  *  Additional copyright 2024 Gatewood Green
  *  Additional copyright 2024 @terminal3
  *
- *  VERSION 202411040900
+ *  VERSION 202411041115
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
@@ -25,7 +25,7 @@
  * 2024.10.21 - Device power/switch local state changes now report as type: "physical", light local state brightness changes as unit: "%"
  * 2024.10.23 - Fixed potential fan speed mapping issues, replaced the binary Debug log option switch in the app to support levels of logging
  * 2024.10.24 - Improved API error reporting, incorporate @terminal3's Additional Motorized Shaed commands (openNext, closeNext)
- * 2024.11.04 - More debug logging
+ * 2024.11.04 - More debug logging, add function for child devices to get parent app settings (for matching logLevel)
  *
  */
 
@@ -136,6 +136,11 @@ def initialize() {
     
     def refreshEvery = refreshInterval ?: 30
     schedule("0/${refreshEvery} * * * * ? *", updateDevices)
+}
+
+def childGetSettings( setting ) {
+    def data = settings?."${setting}"
+    return data
 }
 
 void logAppEvent ( message="", level="info" ) {

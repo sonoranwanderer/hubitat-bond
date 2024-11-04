@@ -13,8 +13,9 @@
  *  Oct 23, 2024 - made getMyBondId() more resilient
  *  Oct 23, 2024 - minor error reporting improvements
  *  Nov 04, 2024 - logging improvements, fix Hubitat/groovy data type issues detecting Breeze support
+ *  Nov 04, 2024 - log at the highest level of detail requested between the driver and parent Bond Home Integration app
  *
- *  VERSION 202411040900
+ *  VERSION 202411041115
  */
 
 metadata {
@@ -65,6 +66,21 @@ void logEvent ( message="", level="info" ) {
     Integer msgLevelN = logLevels[ level ].toInteger()
     String  name      = device.displayName.toString()
     Integer logLevelN = 0
+    Integer appLevelN = 6 /* impossibly high for later test */
+
+    /*
+     *  Will generate error in logs in App is an older version of code without childGetSettings().
+     *  Can't seem to trap MissingMethodExceptionNoStack exceptions
+     */
+    String appLogLevel = stuff = parent.childGetSettings( "logLevel" )
+    if ( appLogLevel == null ) {
+        log.error "${name}: logEvent(): Unable to get Bond app log setting, please update Bond Home Integration app code. This error goes with the previous MissingMethodExceptionNoStack error"
+    } else {
+        appLevelN = logLevels[ appLogLevel ].toInteger()
+        if ( appLevelN == null || appLevelN < 0 || appLevelN > 5 ) {
+            appLevelN = 6 /* impossibly high for later test */
+        }
+    }
 
     if ( device.getSetting( "logLevel" ) == null ) {
         device.updateSetting( "logLevel", "3" ) /* Send string to imitate what the preference dialog will do for enum numeric keys */
@@ -72,12 +88,15 @@ void logEvent ( message="", level="info" ) {
         logLevelN = 3
     } else {
         logLevelN = device.getSetting( "logLevel" ).toInteger()
+        if ( logLevelN == null || logLevelN < 1 || logLevelN > 5 )
+            logLevelN = 3 /* default to info on unexpected value */
     }
     if ( msgLevelN == null || msgLevelN < 1 || msgLevelN > 5 ) {
         msgLevelN = 3
         level     = "info"
     }
-    if ( msgLevelN >= logLevelN )
+    /* We log at the highest level of detail (lower level number) between the app and driver */
+    if ( msgLevelN >= logLevelN || msgLevelN >= appLevelN )
         log."${level}" "${name}: ${message}"
 }
 
