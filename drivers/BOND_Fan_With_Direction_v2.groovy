@@ -14,8 +14,9 @@
  *  Oct 23, 2024 - minor error reporting improvements
  *  Nov 04, 2024 - logging improvements, fix Hubitat/groovy data type issues detecting Breeze support
  *  Nov 04, 2024 - log at the highest level of detail requested between the driver and parent Bond Home Integration app
+ *  Nov 05, 2024 - fix getBondDeviceState() bug
  *
- *  VERSION 202411041115
+ *  VERSION 202411051245
  */
 
 metadata {
@@ -37,19 +38,19 @@ metadata {
         attribute "bondBreezeVariability", "integer"
         attribute "bondDirectionSupport", "integer"
 
-        command "configure"
-        /*
-        command "fixPower",     [ [ name:"Power*", type: "ENUM", description: "Power", constraints: [ "off","on" ] ] ]
-        command "fixSpeed",     [ [ name:"Speed*", type: "ENUM", description: "Speed", constraints: [ "off","low", "medium-low", "medium", "medium-high", "high", "on" ] ] ]
-        command "fixDirection", [ [ name:"Direction*", type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
-        */
-        command "setDirection", [ [ name:"Direction",  type: "ENUM", description: "Direction", constraints: [ "forward","reverse" ] ] ]
-        command "updateBondState"
-        command "rebootBond"
-        command "toggle"
-        command "queryDevice"
-        command "wipeStateData"
-        command "toggleBreeze"
+        command "configure",       [ [ name:"Detect and configure Bond fan device parameters and update driver settings" ] ]
+        command "cycleSpeed",      [ [ name:"Increase the fan's speed one setting. If the fan is off, Cycle Speed will turn the fan on and set it to Low. If the fan is on High, return to the Low speed setting" ] ]
+        command "fixPower",        [ [ name:"Power*", type: "ENUM", description: "Update Hubitat and Bond Bridge's belief of the fan's current Power State", constraints: [ "off","on" ] ] ]
+        command "fixSpeed",        [ [ name:"Speed*", type: "ENUM", description: "Update Hubitat and Bond Bridge's belief of the fan's current Speed", constraints: [ "off","low", "medium-low", "medium", "medium-high", "high", "on" ] ] ]
+        command "fixDirection",    [ [ name:"Direction*", type: "ENUM", description: "Update Hubitat and Bond Bridge's belief of the fan's current Direction", constraints: [ "forward","reverse" ] ] ]
+        command "queryDevice",     [ [ name:"Query Bond controller for useful debug information and store it in the Device Details, Data field below" ] ]
+        command "rebootBond",      [ [ name:"Reboot Bond Controller. Reboot command may not work on all Smart By Bond controllers" ] ]
+        command "setDirection",    [ [ name:"Direction*",  type: "ENUM", description: "Change the Fan's Direction. Note: Not all fans support directon change through Hubitat/Bond", constraints: [ "forward","reverse" ] ] ]
+        command "toggle",          [ [ name:"Toggle the fan on or off" ] ]
+        command "toggleBreeze",    [ [ name:"Toggle the fan's built-in Breeze feature on or off. If the fan is off, Toggle Breeze will turn on fan and enable the Breeze feature. Not all Bond controlled fans have built-in Breeze support" ] ]
+        command "updateBondState", [ [ name:"Force Hubitat to get current Bond device state and update driver state values" ] ]
+        command "wipeStateData",   [ [ name:"Clear the Hubitat driver's understanding of current parameters and state along with any stored data" ] ]
+
         command "runAction",          [ [ name:"BondAction*",  type:"STRING", description:"Bond Device Action" ],
                                         [ name:"Arguments",    type:"STRING", description:"Action Arguments" ] ]
         command "setBreezeParameters",[ [ name:"AverageSpeed*",type:"NUMBER", description:"Average Speed" ],
@@ -199,8 +200,9 @@ def getBondDeviceProperties() {
 }
 
 def getBondDeviceState() {
-    def myId = getMyBondId()
-    def params = [
+    def myId      = getMyBondId()
+    def maxSpeedN = getMaxSpeed( myId )
+    def params    = [
         path: "/v2/devices/${myId}/state"
     ]
     def bondState = getHttpData( params )
@@ -222,7 +224,7 @@ def getBondDeviceState() {
             if ( bondState.power ) {
                 if ( device.currentValue( "switch" ) == "off" ) {
                     sendEvent( name: "switch", value: "on",  type: "physical", descriptionText: "Bond fan state update 'on'"  )
-                    def curSpeedS = translateBondFanSpeedToHE(fan, state.fanProperties[fan].max_speed ?: 3, bondState.speed)
+                    def curSpeedS = parent.translateBondFanSpeedToHE( myId, maxSpeedN, bondState.speed )
                     device.sendEvent( name: "speed",  value: curSpeedS, descriptionText: "Bond fan speed state update '${curSpeedS}'" )
                 }
             } else {
@@ -598,12 +600,11 @@ void runAction( action="", parameters="" ) {
 void on() {
     chkConfigure()
     parent.handleOn( device )
-    if ( state.lastSpeed != null ) {
+    if ( state.lastSpeed != null )
         parent.handleFanSpeed( device, state.lastSpeed )
-    }
     devSpeedS = getDeviceSpeed()
     sendEvent( name:"speed", value:devSpeedS )
-    log.info "${device.displayName}: Turned on"
+    logEvent( "on(): Turned fan on", "info" )
 }
 
 void off() {
@@ -613,14 +614,17 @@ void off() {
         parent.executeAction( getMyBondId(), "BreezeOff" )
         sendEvent(name:"bondBreezeMode", value:"0")
     }
-    log.info "${device.displayName}: Turned off"
+    logEvent( "off(): Turned fan off", "info" )
 }
 
 void toggle() {
-    if (device.currentValue("switch") == "on")
+    if (device.currentValue("switch") == "on") {
+        logEvent( "toggle(): Toggling fan off", "trace" )
         off()
-    else
+    } else {
+        logEvent( "toggle(): Toggling fan on", "trace" )
         on()
+    }
 }
 
 void setSpeed( String speed ) {
