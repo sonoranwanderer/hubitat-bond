@@ -17,8 +17,12 @@
  *  Nov 05, 2024 - fix getBondDeviceState() bug, Update sendEvent() calls for type of event when changing or detecting device state, fix toggleBreeze() not updating driver state
  *  Nov 06, 2024 - fix issue with duplicate speeds for fans with >=6 speed options
  *
- *  VERSION 202411060730
  */
+
+import groovy.transform.Field
+@Field static final String VERSION   = "202411060930"
+@Field static final String DRIVER    = "Bond Fan v2"
+@Field static final String COMM_LINK = "https://github.com/sonoranwanderer/hubitat-bond"
 
 metadata {
     definition (
@@ -30,6 +34,7 @@ metadata {
         capability "Switch"
         capability "FanControl"
         capability "Configuration"
+        capability "Initialize"
 
         attribute "direction",             "enum", ["forward", "reverse"]
         attribute "bondFanMaxSpeed",       "number"
@@ -59,11 +64,12 @@ metadata {
     }
 
     preferences {
-        input name: "logLevel", type: "enum", title: "Logging Level", defaultValue: 3, options: [3: "info", 2:"debug", 1:"trace"], required: true
+        input name: "helpInfo", type: "hidden", title: fmtHelpInfo("Bond Driver Version")
+        input name: "logLevel", type: "enum",   title: "Logging Level", defaultValue: 3, options: [3: "info", 2:"debug", 1:"trace"], required: true
     }
 }
 
-void logEvent ( message="", level="info" ) {    
+void logEvent ( message="", level="info" ) {
     Map     logLevels = [ error: 5, warn: 4, info: 3, debug: 2, trace: 1 ]
     Integer msgLevelN = logLevels[ level ].toInteger()
     String  name      = device.displayName.toString()
@@ -100,6 +106,28 @@ void logEvent ( message="", level="info" ) {
     /* We log at the highest level of detail (lower level number) between the app and driver */
     if ( msgLevelN >= logLevelN || msgLevelN >= appLevelN )
         log."${level}" "${name}: ${message}"
+}
+
+def installed() {
+    logEvent( "installed(): ${DRIVER}: ${VERSION}", "info" )
+}
+
+def updated() {
+    logEvent( "updated(): ${DRIVER}: ${VERSION}", "info" )
+}
+
+def initialize() {
+    logEvent( "initialize(): ${DRIVER}: ${VERSION}", "info" )
+}
+
+String fmtHelpInfo(String str) {
+	String info = "${DRIVER}: ${VERSION}".trim()
+	String prefLink = "<a href='${COMM_LINK}' target='_blank'>${str}<br><div style='font-size: 70%;'>${info}</div></a>"
+	String topStyle = "style='font-size: 18px; padding: 1px 12px; border: 2px solid Crimson; border-radius: 6px;'" //SlateGray
+	String topLink = "<a ${topStyle} href='${COMM_LINK}' target='_blank'>${str}<br><div style='font-size: 14px;'>${info}</div></a>"
+
+	return "<div style='font-size: 160%; font-style: bold; padding: 2px 0px; text-align: center;'>${prefLink}</div>" +
+		"<div style='text-align: center; position: absolute; top: 46px; right: 60px; padding: 0px;'><ul class='nav'><li>${topLink}</ul></li></div>"
 }
 
 boolean checkHttpResponse( action, resp ) {
