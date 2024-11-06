@@ -7,7 +7,7 @@
  *  Additional copyright 2024 Gatewood Green
  *  Additional copyright 2024 @terminal3
  *
- *  VERSION 202411041115
+ *  VERSION 202411051815
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
@@ -26,6 +26,7 @@
  * 2024.10.23 - Fixed potential fan speed mapping issues, replaced the binary Debug log option switch in the app to support levels of logging
  * 2024.10.24 - Improved API error reporting, incorporate @terminal3's Additional Motorized Shaed commands (openNext, closeNext)
  * 2024.11.04 - More debug logging, add function for child devices to get parent app settings (for matching logLevel)
+ * 2024.11.05 - Update sendEvent() calls for type of event when changing or detecting device state
  *
  */
 
@@ -587,12 +588,12 @@ def updateDevices() {
         {
             device.sendEvent( name: "switch", value: "on", type: "physical", descriptionText: "Bond fan state update 'on'" )
             def curSpeedS = translateBondFanSpeedToHE(fan, state.fanProperties[fan].max_speed ?: 3, deviceState.speed)
-            device.sendEvent( name: "speed",  value: curSpeedS, descriptionText: "Bond fan speed state update '${curSpeedS}'" )
+            device.sendEvent( name: "speed",  value: curSpeedS, type: "physical", descriptionText: "Bond fan speed state update '${curSpeedS}'" )
         }
         else
         {
             device.sendEvent( name: "switch", value: "off", type: "physical", descriptionText: "Bond fan state update 'off'" )
-            device.sendEvent( name: "speed",  value: "off", descriptionText: "Bond fan speed state update 'off'"  )
+            device.sendEvent( name: "speed",  value: "off", type: "physical", descriptionText: "Bond fan speed state update 'off'"  )
         }
         if ( deviceLight ) {
             if ( deviceState.brightness != null )
@@ -645,11 +646,11 @@ def updateDevices() {
             if (deviceState.flame > 0 && deviceState.power > 0)
             {
                 if (deviceState.flame <= 25)
-                    device.sendEvent(name: "flame", value: "low")
+                    device.sendEvent(name: "flame", value: "low", type: "physical")
                 else if (deviceState.flame <= 50)
-                    device.sendEvent(name: "flame", value: "medium")
+                    device.sendEvent(name: "flame", value: "medium", type: "physical")
                 else
-                    device.sendEvent(name: "flame", value: "high")
+                    device.sendEvent(name: "flame", value: "high", type: "physical")
             }
             else
             {
@@ -683,7 +684,7 @@ def updateDevices() {
                 }
                 if (deviceFan)
                 {
-                    deviceFan.sendEvent(name: "speed", value: "off")
+                    deviceFan.sendEvent(name: "speed", value: "off", type: "physical")
                 }
                 if (deviceLight)
                 {
@@ -706,12 +707,12 @@ def updateDevices() {
             if (deviceState.open == 1)
             {
                 device.sendEvent(name: "switch", value: "on", type: "physical")
-                device.sendEvent(name: "windowShade", value: "open")
+                device.sendEvent(name: "windowShade", value: "open", type: "physical")
             }
             else
             {
                 device.sendEvent(name: "switch", value: "off", type: "physical")
-                device.sendEvent(name: "windowShade", value: "closed")
+                device.sendEvent(name: "windowShade", value: "closed", type: "physical")
             }
         }
     }
@@ -743,7 +744,7 @@ def handleOn(device) {
 
     if (executeAction(bondId, "TurnOn") && shouldSendEvent(bondId))
     {
-        device.sendEvent(name: "switch", value: "on")
+        device.sendEvent(name: "switch", value: "on", type: "digital")
     }
     
 }
@@ -755,21 +756,21 @@ def handleLightOn(device) {
     {
         if (executeAction(bondId, "TurnUpLightOn")) 
         {
-            device.sendEvent(name: "switch", value: "on")
+            device.sendEvent(name: "switch", value: "on", type: "digital")
         }
     }
     else if (device.deviceNetworkId.contains("downlight"))
     {
         if (executeAction(bondId, "TurnDownLightOn")) 
         {
-            device.sendEvent(name: "switch", value: "on")
+            device.sendEvent(name: "switch", value: "on", type: "digital")
         }
     }
     else
     {
         if (executeAction(bondId, "TurnLightOn")) 
         {
-            device.sendEvent(name: "switch", value: "on")
+            device.sendEvent(name: "switch", value: "on", type: "digital")
         }
     }
 }
@@ -781,21 +782,21 @@ def handleLightOff(device) {
     {
         if (executeAction(bondId, "TurnUpLightOff")) 
         {
-            device.sendEvent(name: "switch", value: "off")
+            device.sendEvent(name: "switch", value: "off", type: "digital")
         }
     }
     else if (device.deviceNetworkId.contains("downlight"))
     {
         if (executeAction(bondId, "TurnDownLightOff")) 
         {
-            device.sendEvent(name: "switch", value: "off")
+            device.sendEvent(name: "switch", value: "off", type: "digital")
         }
     }    
     else
     {
         if (executeAction(bondId, "TurnLightOff")) 
         {
-            device.sendEvent(name: "switch", value: "off")
+            device.sendEvent(name: "switch", value: "off", type: "digital")
         }
     }
 }
@@ -861,21 +862,21 @@ def handleLightLevel(device, level) {
     {
         if (executeAction(bondId, "SetUpLightBrightness", level)) 
         {
-            device.sendEvent(name: "level", value: level)
+            device.sendEvent(name: "level", value: level, type: "digital")
         }
     }
     else if (device.deviceNetworkId.contains("downlight"))
     {
         if (executeAction(bondId, "SetDownLightBrightness", level)) 
         {
-            device.sendEvent(name: "level", value: level)
+            device.sendEvent(name: "level", value: level, type: "digital")
         }
     }
     else 
     {
         if (executeAction(bondId, "SetBrightness", level)) 
         {
-            device.sendEvent(name: "level", value: level)
+            device.sendEvent(name: "level", value: level, type: "digital")
         }
     }
 }
@@ -888,7 +889,7 @@ def handleSetFlame(device, height)
     if (height == "off")
     {
         if (handleOff(device))
-            device.sendEvent(name: "flame", value: "off")
+            device.sendEvent(name: "flame", value: "off", type: "digital")
     }
     else 
     {
@@ -902,7 +903,7 @@ def handleSetFlame(device, height)
             
         if (executeAction(bondId, "SetFlame", flameHeight))
         {
-            device.sendEvent(name: "flame", value: height)
+            device.sendEvent(name: "flame", value: height, type: "digital")
         }
     }
 }
@@ -914,7 +915,7 @@ def handleOpen(device)
     
     if (executeAction(bondId, "Open")) 
     {
-        device.sendEvent(name: "windowShade", value: "open")
+        device.sendEvent(name: "windowShade", value: "open", type: "digital")
     }
 }
 
@@ -925,7 +926,7 @@ def handleOpenNext(device)
 
     if (executeAction(bondId, "OpenNext"))
     {
-        device.sendEvent(name: "windowShade", value: "open")
+        device.sendEvent(name: "windowShade", value: "open", type: "digital")
     }
 }
 
@@ -936,7 +937,7 @@ def handleClose(device)
 
     if (executeAction(bondId, "Close"))
     {
-        device.sendEvent(name: "windowShade", value: "closed")
+        device.sendEvent(name: "windowShade", value: "closed", type: "digital")
     }
 }
 
@@ -947,7 +948,7 @@ def handleCloseNext(device)
 
     if (executeAction(bondId, "CloseNext"))
     {
-        device.sendEvent(name: "windowShade", value: "closed")
+        device.sendEvent(name: "windowShade", value: "closed", type: "digital")
     }
 }
 
@@ -981,14 +982,14 @@ def fixPowerState(device, state)
     if (executeFixState(bondId, '{"power": ' + power + '}'))
     {
         if (power == 1)
-            device.sendEvent(name: "switch", value: "on")
+            device.sendEvent(name: "switch", value: "on", type: "digital", descriptionText: "Manual driver state update")
         else
         {
-            device.sendEvent(name: "switch", value: "off")
+            device.sendEvent(name: "switch", value: "off", type: "digital", descriptionText: "Manual driver state update")
             if (device.hasAttribute("speed"))
-                device.sendEvent(name: "speed", value: "off")
+                device.sendEvent(name: "speed", value: "off", type: "digital", descriptionText: "Manual driver state update")
             if (device.hasAttribute("flame"))
-                device.sendEvent(name: "flame", value: "off")
+                device.sendEvent(name: "flame", value: "off", type: "digital", descriptionText: "Manual driver state update")
         }
     }
 }
@@ -1008,7 +1009,7 @@ def fixFlameState(device, state)
 
     if (executeFixState(bondId, '{"flame": ' + flameHeight + '}'))
     {
-        device.sendEvent(name: "flame", value: height)
+        device.sendEvent(name: "flame", value: height, type: "digital", descriptionText: "Manual driver state update")
     }
 }
 
@@ -1022,14 +1023,14 @@ def fixFanSpeed(device, fanState)
     {
         if (executeFixState(bondId, '{"power": 0}'))
         {
-            device.sendEvent(name: "speed", value: "off")
+            device.sendEvent(name: "speed", value: "off", type: "digital", descriptionText: "Manual driver state update")
         }
     }
     else 
     {
         if (executeFixState(bondId, '{"speed": ' + speed + '}'))
         {
-            device.sendEvent(name: "speed", value: fanState)
+            device.sendEvent(name: "speed", value: fanState, type: "digital", descriptionText: "Manual driver state update")
         }
     }
 }
@@ -1049,13 +1050,13 @@ def fixShadeState(device, state)
     {
         if (open == 1)
         {
-            device.sendEvent(name: "switch", value: "on")
-            device.sendEvent(name: "windowShade", value: "open")
+            device.sendEvent(name: "switch", value: "on", type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "windowShade", value: "open", type: "digital", descriptionText: "Manual driver state update")
         }
         else
         {
-            device.sendEvent(name: "switch", value: "off")
-            device.sendEvent(name: "windowShade", value: "closed")
+            device.sendEvent(name: "switch", value: "off", type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "windowShade", value: "closed", type: "digital", descriptionText: "Manual driver state update")
         }
     }
 }
@@ -1075,11 +1076,11 @@ def fixDirection(device, state)
     {
         if (direction == 1)
         {
-            device.sendEvent(name: "direction", value: "forward")
+            device.sendEvent(name: "direction", value: "forward", type: "digital", descriptionText: "Manual driver state update")
         }
         else
         {
-            device.sendEvent(name: "direction", value: "reverse")
+            device.sendEvent(name: "direction", value: "reverse", type: "digital", descriptionText: "Manual driver state update")
         }
     }
 }
@@ -1099,13 +1100,13 @@ def fixFPFanPower(device, state)
     {
         if (fppower == 1)
         {
-            device.sendEvent(name: "switch", value: "on")
-            device.sendEvent(name: "speed", value: "on")
+            device.sendEvent(name: "switch", value: "on", type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "speed", value: "on", type: "digital", descriptionText: "Manual driver state update")
         }
         else
         {
-            device.sendEvent(name: "switch", value: "off")
-            device.sendEvent(name: "speed", value: "off")
+            device.sendEvent(name: "switch", value: "off", type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "speed", value: "off", type: "digital", descriptionText: "Manual driver state update")
         }
     }
 }
@@ -1121,16 +1122,16 @@ def fixFPFanSpeed(device, fanState)
     {
         if (executeFixState(bondId, '{"fpfan_power": 0}'))
         {
-            device.sendEvent(name: "speed", value: "off")
-            device.sendEvent(name: "switch", value: "off")
+            device.sendEvent(name: "speed", value: "off", type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "switch", value: "off", type: "digital", descriptionText: "Manual driver state update")
         }
     }
     else 
     {
         if (executeFixState(bondId, '{"fpfan_speed": ' + speed + '}'))
         {
-            device.sendEvent(name: "speed", value: fanState)
-            device.sendEvent(name: "switch", value: "on")
+            device.sendEvent(name: "speed", value: fanState, type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "switch", value: "on", type: "digital", descriptionText: "Manual driver state update")
         }
     }
 }
@@ -1149,21 +1150,21 @@ def fixLightPower(device, state) {
     {
         if (executeFixState(bondId, '{"up_light": ' + power + '}'))
         {
-            device.sendEvent(name: "switch", value: state)
+            device.sendEvent(name: "switch", value: state, type: "digital", descriptionText: "Manual driver state update")
         }
     }
     else if (device.deviceNetworkId.contains("downlight"))
     {
         if (executeFixState(bondId, '{"down_light": ' + power + '}'))
         {
-            device.sendEvent(name: "switch", value: state)
+            device.sendEvent(name: "switch", value: state, type: "digital", descriptionText: "Manual driver state update")
         }
     }
     else
     {
         if (executeFixState(bondId, '{"light": ' + power + '}'))
         {
-            device.sendEvent(name: "switch", value: state)
+            device.sendEvent(name: "switch", value: state, type: "digital", descriptionText: "Manual driver state update")
         }
     }
 }
@@ -1176,13 +1177,13 @@ def fixLightLevel(device, state) {
     {
         if (executeFixState(bondId, '{"up_light_brightness": ' + state + '}')) 
         {
-            device.sendEvent(name: "level", value: state)
+            device.sendEvent(name: "level", value: state, type: "digital", descriptionText: "Manual driver state update")
         }
         if (state == 0)
         {
             if (executeFixState(bondId, '{"up_light": 0}')) 
             {
-                device.sendEvent(name: "switch", value: "off")
+                device.sendEvent(name: "switch", value: "off", type: "digital", descriptionText: "Manual driver state update")
             }
         }
     }
@@ -1190,13 +1191,13 @@ def fixLightLevel(device, state) {
     {
         if (executeFixState(bondId, '{"down_light_brightness": ' + state + '}'))
         {
-            device.sendEvent(name: "level", value: state)
+            device.sendEvent(name: "level", value: state, type: "digital", descriptionText: "Manual driver state update")
         }
         if (state == 0)
         {
             if (executeFixState(bondId, '{"down_light": 0}')) 
             {
-                device.sendEvent(name: "switch", value: "off")
+                device.sendEvent(name: "switch", value: "off", type: "digital", descriptionText: "Manual driver state update")
             }
         }
     }
@@ -1204,13 +1205,13 @@ def fixLightLevel(device, state) {
     {
         if (executeFixState(bondId, '{"brightness": ' + state + '}'))
         {
-            device.sendEvent(name: "level", value: state)
+            device.sendEvent(name: "level", value: state, type: "digital", descriptionText: "Manual driver state update")
         }
         if (state == 0)
         {
             if (executeFixState(bondId, '{"light": 0}')) 
             {
-                device.sendEvent(name: "switch", value: "off")
+                device.sendEvent(name: "switch", value: "off", type: "digital", descriptionText: "Manual driver state update")
             }
         }
     }
@@ -1272,7 +1273,7 @@ def handleFanSpeed(device, speed) {
 
     if ( speed == "off" ) {
         if ( handleOff( device ) ) {
-            device.sendEvent( name: "speed", value: "off" )
+            device.sendEvent( name: "speed", value: "off", type: "digital" )
         }
     } else if ( speed == "on" ) {
         handleOn( device )
@@ -1280,8 +1281,8 @@ def handleFanSpeed(device, speed) {
         def max_speed = state.fanProperties?.getAt( bondId )?.max_speed ?: 3
         logAppEvent( "handleFanSpeed(): calling SetSpeed() with bondId=${bondId}, max_speed=${max_speed} speed=${speed}", "debug" )
         if ( executeAction( bondId, "SetSpeed", translateHEFanSpeedToBond( bondId, max_speed, speed ) ) ) {
-            device.sendEvent( name: "switch", value: "on" )
-            device.sendEvent( name: "speed", value: speed )
+            device.sendEvent( name: "switch", value: "on", type: "digital" )
+            device.sendEvent( name: "speed", value: speed, type: "digital" )
         }
     }
 }
@@ -1298,7 +1299,7 @@ def handleFPFanSpeed(device, speed) {
     {
         if (executeAction(bondId, "SetSpeed", translateHEFanSpeedToBond(bondId, state.fireplaceProperties?.getAt(bondId)?.max_speed ?: 3, speed))) 
         {
-            device.sendEvent(name: "speed", value: speed)
+            device.sendEvent(name: "speed", value: speed, type: "digital")
         }
     }
 }
@@ -1309,8 +1310,8 @@ def handleFPFanOn(device) {
     
     if (executeAction(bondId, "TurnFpFanOn")) 
     {
-        device.sendEvent(name: "switch", value: "on")
-        device.sendEvent(name: "speed", value: "on")
+        device.sendEvent(name: "switch", value: "on", type: "digital")
+        device.sendEvent(name: "speed", value: "on", type: "digital")
         return true
     }
     
@@ -1324,8 +1325,8 @@ def handleFPFanOff(device) {
     
     if (executeAction(bondId, "TurnFpFanOff")) 
     {
-        device.sendEvent(name: "switch", value: "off")
-        device.sendEvent(name: "speed", value: "off")
+        device.sendEvent(name: "switch", value: "off", type: "digital")
+        device.sendEvent(name: "speed", value: "off", type: "digital")
         return true
     }
     
@@ -1338,9 +1339,9 @@ def handleOff(device) {
 
     if (executeAction(bondId, "TurnOff") && shouldSendEvent(bondId)) 
     {
-        device.sendEvent(name: "switch", value: "off")
+        device.sendEvent(name: "switch", value: "off", type: "digital")
         if (device.hasCapability("FanControl"))
-        device.sendEvent(name: "speed", value: "off")
+        device.sendEvent(name: "speed", value: "off", type: "digital")
         return true
     }
     
@@ -1357,7 +1358,7 @@ def handleDirection(device, direction)
     bondDirection = -1
     if (executeAction(bondId, "SetDirection", bondDirection)) 
     {
-        device.sendEvent(name: "direction", value: direction)
+        device.sendEvent(name: "direction", value: direction, type: "digital")
     }
     
 }

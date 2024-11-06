@@ -14,9 +14,9 @@
  *  Oct 23, 2024 - minor error reporting improvements
  *  Nov 04, 2024 - logging improvements, fix Hubitat/groovy data type issues detecting Breeze support
  *  Nov 04, 2024 - log at the highest level of detail requested between the driver and parent Bond Home Integration app
- *  Nov 05, 2024 - fix getBondDeviceState() bug
+ *  Nov 05, 2024 - fix getBondDeviceState() bug, Update sendEvent() calls for type of event when changing or detecting device state, fix toggleBreeze() not updating driver state
  *
- *  VERSION 202411051245
+ *  VERSION 202411051815
  */
 
 metadata {
@@ -30,13 +30,13 @@ metadata {
         capability "FanControl"
         capability "Configuration"
 
-        attribute "direction", "enum", ["forward", "reverse"]
-        attribute "bondFanMaxSpeed", "integer"
-        attribute "bondBreezeMode", "integer"
-        attribute "bondBreezeAverage", "integer"
-        attribute "bondBreezeSupport", "integer"
-        attribute "bondBreezeVariability", "integer"
-        attribute "bondDirectionSupport", "integer"
+        attribute "direction",             "enum", ["forward", "reverse"]
+        attribute "bondFanMaxSpeed",       "number"
+        attribute "bondBreezeMode",        "number"
+        attribute "bondBreezeAverage",     "number"
+        attribute "bondBreezeSupport",     "number"
+        attribute "bondBreezeVariability", "number"
+        attribute "bondDirectionSupport",  "number"
 
         command "configure",       [ [ name:"Detect and configure Bond fan device parameters and update driver settings" ] ]
         command "cycleSpeed",      [ [ name:"Increase the fan's speed one setting. If the fan is off, Cycle Speed will turn the fan on and set it to Low. If the fan is on High, return to the Low speed setting" ] ]
@@ -51,10 +51,10 @@ metadata {
         command "updateBondState", [ [ name:"Force Hubitat to get current Bond device state and update driver state values" ] ]
         command "wipeStateData",   [ [ name:"Clear the Hubitat driver's understanding of current parameters and state along with any stored data" ] ]
 
-        command "runAction",          [ [ name:"BondAction*",  type:"STRING", description:"Bond Device Action" ],
-                                        [ name:"Arguments",    type:"STRING", description:"Action Arguments" ] ]
-        command "setBreezeParameters",[ [ name:"AverageSpeed*",type:"NUMBER", description:"Average Speed" ],
-                                        [ name:"Variability*", type:"NUMBER", description:"Speed Variability" ] ]
+        command "runAction",          [ [ name:"BondAction*",  type:"string", description:"Bond Device Action" ],
+                                        [ name:"Arguments",    type:"string", description:"Action Arguments" ] ]
+        command "setBreezeParameters",[ [ name:"AverageSpeed*",type:"number", description:"Average Speed" ],
+                                        [ name:"Variability*", type:"number", description:"Speed Variability" ] ]
     }
 
     preferences {
@@ -101,11 +101,6 @@ void logEvent ( message="", level="info" ) {
         log."${level}" "${name}: ${message}"
 }
 
-void logDebug( String msg ) {
-    /* Legacy compatibility */
-    logEvent( msg, "debug" )
-}
-
 boolean checkHttpResponse( action, resp ) {
     if ( resp.status == 200 || resp.status == 201 || resp.status == 204 ) {
         logEvent( "getHttpData(): status: ${resp.status}, data: ${resp.data}", "trace" )
@@ -149,7 +144,7 @@ def getBondVersion() {
         device.updateDataValue( "bondVersion", bondVersion.toMapString() )
     } else {
         device.updateDataValue( "bondVersion", null )
-        log.error "${device.displayName}: queryBondAPI(): Failed to get Bond version data"
+        logEvent( "queryBondAPI(): Failed to get Bond version data", "error" )
     }
     return bondVersion
 }
@@ -164,7 +159,7 @@ def rebootBond() {
         device.updateDataValue( "bondReboot", bondReboot.toMapString() )
     } else {
         device.updateDataValue( "bondReboot", null )
-        log.error "${device.displayName}: bondReboot(): Failed to reboot Bond. Command may not be implemented on controller."
+        logEvent( "bondReboot(): Failed to reboot Bond. Command may not be implemented on controller.", "error" )
     }
     return bondReboot
 }
@@ -179,7 +174,7 @@ def getBondDeviceData() {
         device.updateDataValue( "bondDevice", bondDevice.toMapString() )
     } else {
         device.updateDataValue( "bondDevice", null )
-        log.error "${device.displayName}: getBondDeviceData(): Failed to get Bond device data for fan ${myId}"
+        logEvent( "getBondDeviceData(): Failed to get Bond device data for fan ${myId}", "error" )
     }
     return bondDevice
 }
@@ -194,7 +189,7 @@ def getBondDeviceProperties() {
         device.updateDataValue( "bondProperties", bondProperties.toMapString() )
     } else {
         device.updateDataValue( "bondProperties", null )
-        log.error "${device.displayName}: getBondDeviceProperties(): Failed to get Bond properties data for fan ${myId}"
+        logEvent( "getBondDeviceProperties(): Failed to get Bond properties data for fan ${myId}", "error" )
     }
     return bondProperties
 }
@@ -225,18 +220,18 @@ def getBondDeviceState() {
                 if ( device.currentValue( "switch" ) == "off" ) {
                     sendEvent( name: "switch", value: "on",  type: "physical", descriptionText: "Bond fan state update 'on'"  )
                     def curSpeedS = parent.translateBondFanSpeedToHE( myId, maxSpeedN, bondState.speed )
-                    device.sendEvent( name: "speed",  value: curSpeedS, descriptionText: "Bond fan speed state update '${curSpeedS}'" )
+                    device.sendEvent( name: "speed",  value: curSpeedS, type: "physical", descriptionText: "Bond fan speed state update '${curSpeedS}'" )
                 }
             } else {
                 if ( device.currentValue( "switch" ) == "on" ) {
                     sendEvent( name: "switch", value: "off", type: "physical", descriptionText: "Bond fan state update 'off'" )
-                    sendEvent( name: "speed",  value: "off", descriptionText: "Bond fan speed state update 'off'"  )
+                    sendEvent( name: "speed",  value: "off", type: "physical", descriptionText: "Bond fan speed state update 'off'"  )
                 }
             }
         }
     } else {
         device.updateDataValue( "bondState", null )
-        log.error "${device.displayName}: getBondDeviceState(): Failed to get Bond state data for fan ${myId}"
+        logEvent( "getBondDeviceState(): Failed to get Bond state data for fan ${myId}", "error" )
     }
     return bondState
 }
@@ -251,7 +246,7 @@ def getBondDeviceActions() {
         device.updateDataValue( "bondActions", bondActions.toMapString() )
     } else {
         device.updateDataValue( "bondActions", null )
-        log.error "${device.displayName}: getBondDeviceActions(): Failed to get Bond actions data for fan ${myId}"
+        logEvent( "getBondDeviceActions(): Failed to get Bond actions data for fan ${myId}", "error" )
     }
     return bondActions
 }
@@ -266,7 +261,7 @@ def getBondDevicePowerCycleState() {
         device.updateDataValue( "bondPowerCycleState", bondPowerCycleState.toMapString() )
     } else {
         device.updateDataValue( "bondPowerCycleState", null )
-        log.error "${device.displayName}: getBondDevicePowerCycleState(): Failed to get Bond power cycle state data for fan ${myId}"
+        logEvent( "getBondDevicePowerCycleState(): Failed to get Bond power cycle state data for fan ${myId}", "error" )
     }
     return bondPowerCycleState
 }
@@ -282,7 +277,7 @@ def getBondDeviceRemoteAddressAndLearn() {
         device.updateDataValue( "bondAddr", bondAddr.toMapString() )
     } else {
         device.updateDataValue( "bondAddr", null )
-        log.error "${device.displayName}: getBondDeviceRemoteAddressAndLearn(): Failed to get Bond remote address and learn window data for fan ${myId}"
+        logEvent( "getBondDeviceRemoteAddressAndLearn(): Failed to get Bond remote address and learn window data for fan ${myId}", "error" )
     }
     return bondAddr
 }
@@ -297,7 +292,7 @@ def getBondDeviceCommands() {
         device.updateDataValue( "bondCommands", bondCommands.toMapString() )
     } else {
         device.updateDataValue( "bondCommands", null )
-        log.warn "${device.displayName}: getBondDeviceCommands(): Failed to get Bond commands data for fan ${myId} (this is expected as is the preceding 404 error)"
+        logEvent( "getBondDeviceCommands(): Failed to get Bond commands data for fan ${myId} (this is expected as is the preceding 404 error)", "warn" )
     }
     return bondCommands
 }
@@ -317,7 +312,7 @@ def queryBondAPI() {
     sendEvent(name:"queryStatus", value:"Step 4/10 Getting Bond device properties...")
     if ( bondDevice.properties == null ) {
         message = "Bond controller does not implement the properties endpoint"
-        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        logEvent( "queryBondAPI(): ${message}", "info" )
         device.updateDataValue( "bondProperties", message )
     } else {
         def bondProperties = getBondDeviceProperties()
@@ -332,7 +327,7 @@ def queryBondAPI() {
     sendEvent(name:"queryStatus", value:"Step 7/10 Getting Bond device commands...")
     if ( bondDevice.commands == null ) {
         message = "Bond controller does not implement the commands endpoint"
-        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        logEvent( "queryBondAPI(): ${message}", "info" )
         device.updateDataValue( "bondCommands", message )
     } else {
         def bondCommands = getBondDeviceCommands()
@@ -341,22 +336,22 @@ def queryBondAPI() {
     sendEvent(name:"queryStatus", value:"Step 8/10 Getting Bond power cycle state...")
     if ( bondDevice.power_cycle_state == null ) {
         message = "Bond controller does not implement the power_cycle_state endpoint"
-        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        logEvent( "queryBondAPI(): ${message}", "info" )
         device.updateDataValue( "bondPowerCycleState", message )
     } else {
         def bondPowerCycleState = getBondDevicePowerCycleState()
     }
 
-    sendEvent(name:"queryStatus", value:"Step 9/10 Getting Bond remote address and learn data...")
+    sendEvent( name:"queryStatus", value:"Step 9/10 Getting Bond remote address and learn data..." )
     if ( bondDevice.addr == null ) {
         message = "Bond controller does not implement the addr endpoint"
-        log.info "${device.displayName}: queryBondAPI(): ${message}"
+        logEvent( "queryBondAPI(): ${message}", "info" )
         device.updateDataValue( "bondAddr", message )
     } else {
         def bondAddr = getBondDeviceRemoteAddressAndLearn()
     }
 
-    sendEvent(name:"queryStatus", value:"Step 10/10 Query complete -<br>REFRESH the page.")
+    sendEvent( name:"queryStatus", value:"Step 10/10 Query complete -<br>REFRESH the page." )
     device.updateDataValue( "lastBondApiQuery", new Date().format("MM/dd/yyyy HH:mm:ss '('ZZZZZ/zzz')'") )
 }
 
@@ -364,13 +359,13 @@ String getMyBondId() {
     def bondDeviceId = ""
     bondDeviceId = parent.getBondIdFromDevice( device )
     if ( bondDeviceId == null || bondDeviceId == "" ) {
-        logDebug "getMyBondId(): failed to get device Id from Bond app"
+        logEvent( "getMyBondId(): failed to get device Id from Bond app", "debug" )
         List<String> networkId = device.getDeviceNetworkId().split( ":" )
         if ( networkId[2] != null ) {
             bondDeviceId = networkId[2]
-            logDebug "getMyBondId(): pulled ${bondDeviceId} from ${device.getDeviceNetworkId()}"
+            logEvent( "getMyBondId(): pulled ${bondDeviceId} from ${device.getDeviceNetworkId()}", "debug" )
         } else {
-            log.error "${device.displayName}: getMyBondId(): failed to get device Id from getDeviceNetworkId(): ${device.getDeviceNetworkId()}. Trying '1'"
+            logEvent( "getMyBondId(): failed to get device Id from getDeviceNetworkId(): ${device.getDeviceNetworkId()}. Trying '1'", "error" )
             bondDeviceId = 1 /* guess */
         }
     }
@@ -383,7 +378,7 @@ void configure() {
     if ( max != null ) {
         sendEvent( name: 'bondFanMaxSpeed', value: max )
     } else {
-        log.error "${device.displayName}: configure() failed to get fan max speed"
+        logEvent( "configure() failed to get fan max speed", "error" )
     }
     getBondDeviceState()
     loadSupportedFanSpeeds( max )
@@ -422,7 +417,7 @@ void wipeStateData( int silent=0 ) {
         dvalues = dvalues + key
     }
     dvalues.each { val -> device.removeDataValue( val ) }
-    log.info "${device.displayName}: Cleared state and device data"
+    logEvent( "wipeStateData(): Cleared state and device data", "info" )
     if ( silent < 1 ) {
         sendEvent(name:"queryStatus", value:"State and data wipe complete -<br>REFRESH the page.")
     }
@@ -437,36 +432,36 @@ int getMaxSpeed( devId ) {
         device.updateDataValue( "bondAppFanProperties", parent.state.fanProperties.toMapString() )
         try {
             maxSpeedN = parent.state.fanProperties.get( devId ).get( "max_speed" )
-            logDebug "getMaxSpeed(): got max_speed from fanProperties"
+            logEvent( "getMaxSpeed(): got max_speed from fanProperties", "debug" )
         } catch ( err ) {
-            log.warn "${device.displayName}: getMaxSpeed(): parent.state.fanProperties get max_speed failed (${err.message}), getting fan properties directly..."
+            logEvent( "getMaxSpeed(): parent.state.fanProperties get max_speed failed (${err.message}), getting fan properties directly...", "warn" )
             fallBack = 1
         }
     } else {
-        log.warn "${device.displayName}: getMaxSpeed(): parent.state.fanProperties is null, getting fan properties directly..."
+        logEvent( "getMaxSpeed(): parent.state.fanProperties is null, getting fan properties directly...", "warn" )
         fallBack = 1
     }
     
     if ( fallBack ) {
         def bondProperties = getBondDeviceProperties()
         if ( bondProperties == null ) {
-            log.warn "${device.displayName}: getMaxSpeed(): getBondDeviceProperties failed, guessing max_speed is 3"
+            logEvent( "getMaxSpeed(): getBondDeviceProperties failed, guessing max_speed is 3", "warn" )
         } else {
             if ( bondProperties.max_speed == null ) {
-                log.warn "${device.displayName}: getMaxSpeed(): bondProperties.max_speed is null, guessing max_speed is 3"
+                logEvent( "getMaxSpeed(): bondProperties.max_speed is null, guessing max_speed is 3", "warn" )
             } else {
                 maxSpeedN = bondProperties.max_speed
-                logDebug "getMaxSpeed(): got max_speed from bondProperties"
+                logEvent( "getMaxSpeed(): got max_speed from bondProperties", "debug" )
             }
         }
     }
     
     if ( maxSpeedN == null || maxSpeedN == 0 ) {
-        log.warn "${device.displayName}: getMaxSpeed(): Failed to get max_speed from all sources, guessing 3"
+        logEvent( "getMaxSpeed(): Failed to get max_speed from all sources, guessing 3", "warn" )
         maxSpeedN = 3 /* just guess */
     }
     
-    logDebug "getMaxSpeed(): Fan Max Speed = ${maxSpeedN}"
+    logEvent( "getMaxSpeed(): Fan Max Speed = ${maxSpeedN}", "debug" )
     return maxSpeedN
 }
 
@@ -477,41 +472,41 @@ void loadSupportedFanSpeeds( int maxSpeedN ) {
     while ( curSpeedN < maxSpeedN ) {
         curSpeedN += 1
         newSpeedS = parent.translateBondFanSpeedToHE( device, maxSpeedN, curSpeedN )
-        logDebug "loadSupportedFanSpeeds() Found new speed: ${newSpeedS}"
+        logEvent( "loadSupportedFanSpeeds() Found new speed: ${newSpeedS}", "debug" )
         fanSpeeds = fanSpeeds + [ newSpeedS ]
     }
     if ( device.currentValue( "bondBreezeMode" ) != null )
         fanSpeeds =  fanSpeeds.reverse() + [ "auto" ]
     speedList = fanSpeeds.join( "," )
-    logDebug "loadSupportedFanSpeeds() fanSpeeds = [${speedList},off,on]"
+    logEvent( "loadSupportedFanSpeeds() fanSpeeds = [${speedList},off,on]", "debug" )
     sendEvent(name: "supportedFanSpeeds", value: groovy.json.JsonOutput.toJson(fanSpeeds + ["off", "on"]))
 }
 
 void queryDevice() {
     def bondDeviceId = getMyBondId()
     if ( bondDeviceId == null ) {
-        log.warn "${device.displayName}: queryDevice(): Bond device ID missing, running configure(). Try again"
+        logEvent( "queryDevice(): Bond device ID missing, running configure(). Try again", "warn" )
         chkConfigure()
         return
     }
     def devState = parent.getState( bondDeviceId )
     if ( devState == null ) {
-        log.warn "${device.displayName}: queryDevice(): parent.getstate( ${bondDeviceId} ) failed"
+        logEvent( "queryDevice(): parent.getstate( ${bondDeviceId} ) failed", "warn" )
         return
     } else {
         strState = devState.toMapString()
-        log.info "${device.displayName}: queryDevice(): Full Device State: ${strState}"
+        logEvent( "queryDevice(): Full Device State: ${strState}", "info" )
         devSpeed = devState.get( "speed" )
         devPower = devState.get( "power" )
         drvPower = device.currentValue("switch")
         drvSpeed = device.currentValue("speed")
-        log.info "${device.displayName}: queryDevice(): Device Power: ${devPower}, Device Speed: ${devSpeed} Driver Power: ${drvPower}, Driver Speed: ${drvSpeed}"
+        logEvent( "queryDevice(): Device Power: ${devPower}, Device Speed: ${devSpeed} Driver Power: ${drvPower}, Driver Speed: ${drvSpeed}", "info" )
     }
     queryBondAPI()
 }
 
 def setBreezeParameters( mean=50, var=50 ) {
-    log.info "${device.displayName}: setBreezeParameters() Called, aveSpeed=${mean}, variability=${var}"
+    logEvent( "setBreezeParameters() Called, aveSpeed=${mean}, variability=${var}", "info" )
     if ( mode > 100 )
         mode = 100
     if ( $mode < 0 )
@@ -526,7 +521,7 @@ def setBreezeParameters( mean=50, var=50 ) {
     if ( curSpeed == "auto" ) {
         mode = 1
     }
-    log.info "${device.displayName}: setBreezeParameters() Setting Breeze Parameters (mode=${mode}, aveSpeed=${mean}, variability=${var})"
+    logEvent( "setBreezeParameters() Setting Breeze Parameters (mode=${mode}, aveSpeed=${mean}, variability=${var})", "info" )
     parent.executeAction( myId, "SetBreeze", "[${mode}, ${mean}, ${var}]" )
     getBreezeState()
 }
@@ -550,18 +545,18 @@ def getDeviceSpeed() {
 def toggleBreeze( force="" ) {
     chkConfigure()
     if ( device.currentValue( "bondBreezeSupport" ) == null ) {
-        log.warn "toggleBreeze(): bondBreezeSupport is null, ran configure(), try again."
+        logEvent( "toggleBreeze(): bondBreezeSupport is null, ran configure(), try again.", "warn" )
         return
     }
     int bondBreezeSupport = device.currentValue( "bondBreezeSupport" ).toInteger()
     if ( bondBreezeSupport < 1 ) {
-        log.warn "${device.displayName}: toggleBreeze(): Device does not support Breeze mode"
+        logEvent( "toggleBreeze(): Device does not support Breeze mode", "error" )
         return
     }
     def myId = getMyBondId()
     def curSpeed = device.currentValue( "speed" )
     def mode = 1
-    log.info "${device.displayName}: toggleBreeze(${force})"
+    logEvent( "toggleBreeze(${force}) called", "info" )
     if ( curSpeed == "auto" ) {
         return
     }
@@ -578,7 +573,10 @@ def toggleBreeze( force="" ) {
 
     if ( targetState == "BreezeOn" ) {
         parent.executeAction( myId, targetState )
-        sendEvent(name:"bondBreezeMode", value:"1")
+        sendEvent( name:"bondBreezeMode", value:1 )
+        if ( device.currentValue( "speed" ) == "off" )
+            sendEvent( name:"switch", value:"on", type:"digital" )
+        sendEvent( name:"speed", value:getDeviceSpeed(), type:"digital" )
     } else {
         off()
     }
@@ -587,14 +585,14 @@ def toggleBreeze( force="" ) {
 void runAction( action="", parameters="" ) {
     def myId = getMyBondId()
     if ( action == "" ) {
-        log.error "${device.displayName}: runAction(): No action provided"
+        logEvent( "runAction(): No action provided", "error" )
         return
     }
     if ( parameters == "" )
         result = parent.executeAction( myId, action )
     else
         result = parent.executeAction( myId, action, parameters )
-    log.info "${device.displayName}: runAction(): action: (${action}) parameters: (${parameters}) result: ${result}"
+    logEvent( "runAction(): action: (${action}) parameters: (${parameters}) result: ${result}", "info" )
 }
 
 void on() {
@@ -603,7 +601,7 @@ void on() {
     if ( state.lastSpeed != null )
         parent.handleFanSpeed( device, state.lastSpeed )
     devSpeedS = getDeviceSpeed()
-    sendEvent( name:"speed", value:devSpeedS )
+    sendEvent( name:"speed", value:devSpeedS, type:"digital" )
     logEvent( "on(): Turned fan on", "info" )
 }
 
@@ -612,7 +610,7 @@ void off() {
     logEvent( "off(): Breeze Support (${device.currentValue( "bondBreezeSupport" ).toInteger()})", "trace" )
     if ( device.currentValue( "bondBreezeSupport" ).toInteger() > 0 ) {
         parent.executeAction( getMyBondId(), "BreezeOff" )
-        sendEvent(name:"bondBreezeMode", value:"0")
+        sendEvent( name:"bondBreezeMode", value:"0" )
     }
     logEvent( "off(): Turned fan off", "info" )
 }
@@ -660,7 +658,7 @@ void cycleSpeed() {
     if ( device.currentValue('bondFanMaxSpeed') != null ) {
         maxSpeedN = device.currentValue('bondFanMaxSpeed')
     } else {
-        log.warn "${device.displayName}: cycleSpeed() ID Bond missing, running Configure. Try again"
+        logEvent( "cycleSpeed() ID Bond missing, running Configure. Try again", "warn" )
         chkConfigure()
         return
     }
@@ -673,29 +671,29 @@ void cycleSpeed() {
     }
     
     curSpeedN = parent.translateHEFanSpeedToBond( device, maxSpeedN, curSpeedS )
-    logDebug "cycleSpeed(): Current: curSpeedN: ${curSpeedN}, newSpeedN: ${newSpeedN}, maxSpeedN: ${maxSpeedN}"
+    logEvent( "cycleSpeed(): Current: curSpeedN: ${curSpeedN}, newSpeedN: ${newSpeedN}, maxSpeedN: ${maxSpeedN}", "debug" )
     newSpeedN = ( curSpeedN + 1 ) % maxSpeedN
     if ( newSpeedN == 0 ) {
         newSpeedN = maxSpeedN
     }
     newSpeedS = parent.translateBondFanSpeedToHE( device, maxSpeedN, newSpeedN )
-    logDebug "cycleSpeed(): New: curSpeedN: ${curSpeedN}, newSpeedN: ${newSpeedN}, maxSpeedN: ${maxSpeedN}, newSpeedS: ${newSpeedS}"
+    logEvent( "cycleSpeed(): New: curSpeedN: ${curSpeedN}, newSpeedN: ${newSpeedN}, maxSpeedN: ${maxSpeedN}, newSpeedS: ${newSpeedS}", "debug" )
     setSpeed( newSpeedS )
 }
 
 void setDirection( direction ) {
     chkConfigure()
     if ( device.currentValue( "bondDirectionSupport" ) == null ) {
-        log.warn "setDirection(): bondDirectionSupport is null, ran configure(), try again."
+        logEvent( "setDirection(): bondDirectionSupport is null, ran configure(), try again.", "warn" )
         return
     }
     int bondDirectionSupport = device.currentValue( "bondDirectionSupport" ).toInteger()
-    logDebug "setDirection(): Bond Direction Support: ${bondDirectionSupport}"
+    logEvent( "setDirection(): Bond Direction Support: ${bondDirectionSupport}", "debug" )
     if ( bondDirectionSupport > 0 ) {
-        logDebug "setDirection(): Calling handleDirection( ${device}, ${direction} )"
+        logEvent( "setDirection(): Calling handleDirection( ${device}, ${direction} )", "debug" )
         parent.handleDirection( device, direction )
     } else {
-        log.warn "setDirection(): Device does not seem to support direction through the Bond API"
+        logEvent( "setDirection(): Device does not seem to support direction through the Bond API", "warn" )
     }
 }
 
