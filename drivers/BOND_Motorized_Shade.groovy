@@ -2,6 +2,7 @@
  *  BOND Motorized Shade
  *
  *  Copyright 2019-2020 Dominick Meglio
+ *  Additional copyright 2024 Gatewood Green
  *  Additional copyright 2024 @terminal3
  *
  *  20241024 - added lower and raise commands 
