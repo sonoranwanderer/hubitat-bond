@@ -5,7 +5,8 @@
  *  Additional copyright 2024 Gatewood Green
  *  Additional copyright 2024 @terminal3
  *
- *  20241024 - added lower and raise commands 
+ *  20241024 - added lower and raise commands
+ *  20241106 - add UI displayed version and application mimimun version validation
  *
  */
 
