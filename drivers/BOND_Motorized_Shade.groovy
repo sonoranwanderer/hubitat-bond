@@ -9,9 +9,10 @@
  */
 
 import groovy.transform.Field
-@Field static final String VERSION   = "202411060930"
+@Field static final String VERSION   = "202411061015"
 @Field static final String DRIVER    = "Bond Motorized Shade"
 @Field static final String COMM_LINK = "https://github.com/sonoranwanderer/hubitat-bond"
+@Field static final String REQAPPVER = "202411061100"
 
 metadata {
     definition (
@@ -32,7 +33,7 @@ metadata {
     }
 
     preferences {
-        input name: "helpInfo", type: "hidden", title: fmtHelpInfo("Bond Driver Version")
+        input name: "helpInfo", type: "hidden", title: fmtHelpInfo("")
         input name: "logLevel", type: "enum",   title: "Logging Level", defaultValue: 3, options: [3: "info", 2:"debug", 1:"trace"], required: true
     }
 }
@@ -88,11 +89,36 @@ def initialize() {
     logEvent( "initialize(): ${DRIVER}: ${VERSION}", "info" )
 }
 
-String fmtHelpInfo(String str) {
+String fmtHelpInfo( String title ) {
 	String info = "${DRIVER}: ${VERSION}".trim()
-	String prefLink = "<a href='${COMM_LINK}' target='_blank'>${str}<br><div style='font-size: 70%;'>${info}</div></a>"
-	String topStyle = "style='font-size: 18px; padding: 1px 12px; border: 2px solid Crimson; border-radius: 6px;'" //SlateGray
-	String topLink = "<a ${topStyle} href='${COMM_LINK}' target='_blank'>${str}<br><div style='font-size: 14px;'>${info}</div></a>"
+    def appName    = parent?.getName()
+    def appVersion = parent?.getVersion()
+    if ( appName != null && appVersion != null ) {
+        info = info + "<br>${appName}: ${appVersion}"
+        if ( appVersion < REQAPPVER ) {
+            logEvent( "${DRIVER}: ${VERSION}: You need to update the Bond Home Integration app code to version ${REQAPPVER} or later", "error" )
+            info = "${DRIVER}: ${VERSION}<br><div style='color:RED;'>Please update Bond APP to version &lt= ${REQAPPVER}. Current app version: ${appVersion}.</div>"
+        }
+    } else if ( device?.displayName != null ) {
+        logEvent( "${DRIVER}: ${VERSION}: You need to update the Bond Home Integration app code to version ${REQAPPVER} or later", "error" )
+        if ( appVersion == null ) { 
+            info = "${DRIVER}: ${VERSION}<br><div style='color:RED;'>Please update Bond APP to version >= ${REQAPPVER}. Current app version is missing.</div>"
+        } else {
+            info = "${DRIVER}: ${VERSION}<br><div style='color:RED;'>Please update Bond APP to version >= ${REQAPPVER}. Current app version: ${appVersion}.</div>"
+        }
+    }
+    String prefLink = "1"
+    String topStyle = "2"
+    String topLink = "3"
+    if ( title != "" ) {
+	    prefLink = "<a href='${COMM_LINK}' target='_blank'>${title}<br><div style='font-size: 70%;'>${info}</div></a>"
+	    topStyle = "style='font-size: 18px; padding: 1px 12px; border: 2px solid Crimson; border-radius: 6px;'" //SlateGray
+	    topLink = "<a ${topStyle} href='${COMM_LINK}' target='_blank'>${title}<br><div style='font-size: 14px;'>${info}</div></a>"
+    } else {
+        prefLink = "<a href='${COMM_LINK}' target='_blank'><div style='font-size: 70%;'>${info}</div></a>"
+	    topStyle = "style='font-size: 18px; padding: 1px 12px; border: 2px solid Crimson; border-radius: 6px;'" //SlateGray
+	    topLink = "<a ${topStyle} href='${COMM_LINK}' target='_blank'><div style='font-size: 14px;'>${info}</div></a>"
+    }
 
 	return "<div style='font-size: 160%; font-style: bold; padding: 2px 0px; text-align: center;'>${prefLink}</div>" +
 		"<div style='text-align: center; position: absolute; top: 46px; right: 60px; padding: 0px;'><ul class='nav'><li>${topLink}</ul></li></div>"
