@@ -7,7 +7,7 @@
  *  Additional copyright 2024 Gatewood Green
  *  Additional copyright 2024 @terminal3
  *
- *  VERSION 202411051815
+ *  VERSION 202411052045
  *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
@@ -26,7 +26,7 @@
  * 2024.10.23 - Fixed potential fan speed mapping issues, replaced the binary Debug log option switch in the app to support levels of logging
  * 2024.10.24 - Improved API error reporting, incorporate @terminal3's Additional Motorized Shaed commands (openNext, closeNext)
  * 2024.11.04 - More debug logging, add function for child devices to get parent app settings (for matching logLevel)
- * 2024.11.05 - Update sendEvent() calls for type of event when changing or detecting device state
+ * 2024.11.05 - Update sendEvent() calls for type of event when changing or detecting device state, logging cleanup
  *
  */
 
@@ -107,20 +107,20 @@ def prefPowerSensors() {
 }
 
 def installed() {
-    logDebug "Installed with settings: ${settings}"
+    logAppEvent( "Installed with settings: ${settings}", "debug" )
 
     initialize()
 }
 
 def updated() {
-    logDebug "Updated with settings: ${settings}"
+    logAppEvent( "Updated with settings: ${settings}", "debug" )
     unschedule()
     unsubscribe()
     initialize()
 }
 
 def uninstalled() {
-    logDebug "Uninstalled app"
+    logAppEvent( "Uninstalled app", "debug" )
 
     for (device in getChildDevices())
     {
@@ -129,7 +129,7 @@ def uninstalled() {
 }
 
 def initialize() {
-    logDebug "initializing"
+    logAppEvent( "initializing", "debug" )
 
     cleanupChildDevices()
     createChildDevices()
@@ -158,16 +158,6 @@ void logAppEvent ( message="", level="info" ) {
     } else {
         log."${level}" "${app.name}: ${message}"
     }
-}
-
-void logDebug( message ) {
-    /* Compatibility pasthrough function
-     *   postpend message for tracing legacy debug calls
-     */
-    if ( settings?.logLevel == "trace" )
-        logAppEvent( "${message} : [legacy logDebug()]", "debug" )
-    else
-        logAppEvent( message, "debug" )
 }
 
 def getHubId() {
@@ -538,7 +528,7 @@ def subscribeSensorEvents() {
             def sensorDevice = this.getProperty("fireplaceSensor${i}")
             if (sensorDevice != null)
             {
-                logDebug "subscribing to power event for ${sensorDevice}"
+                logAppEvent( "subscribing to power event for ${sensorDevice}", "debug" )
                 subscribe(sensorDevice, "power", powerMeterEventHandler)
             }
         }
@@ -546,7 +536,7 @@ def subscribeSensorEvents() {
 }
                   
 def powerMeterEventHandler(evt) {
-    logDebug "Received power meter event ${evt}"
+    logAppEvent( "Received power meter event ${evt}", "debug" )
     for (def i = 0; i < fireplaces.size(); i++)
     {
         def sensorDevice = this.getProperty("fireplaceSensor${i}")
@@ -560,7 +550,7 @@ def powerMeterEventHandler(evt) {
                 value = "off"
             if (value != fireplaceDevice.currentValue("switch"))
             {
-                logDebug "current state ${fireplaceDevice.currentValue("switch")} changing to ${value}"
+                logAppEvent( "current state ${fireplaceDevice.currentValue("switch")} changing to ${value}", "debug" )
                 fireplaceDevice.sendEvent(name: "switch", value: value)
             }
             if (value == "off")
@@ -740,7 +730,7 @@ def updateDevices() {
 
 def handleOn(device) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling On event for ${bondId}"
+    logAppEvent( "Handling On event for ${bondId}", "debug" )
 
     if (executeAction(bondId, "TurnOn") && shouldSendEvent(bondId))
     {
@@ -751,7 +741,7 @@ def handleOn(device) {
 
 def handleLightOn(device) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Light On event for ${bondId}"
+    logAppEvent( "Handling Light On event for ${bondId}", "debug" )
     if (device.deviceNetworkId.contains("uplight"))
     {
         if (executeAction(bondId, "TurnUpLightOn")) 
@@ -777,7 +767,7 @@ def handleLightOn(device) {
 
 def handleLightOff(device) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Light Off event for ${bondId}"   
+    logAppEvent( "Handling Light Off event for ${bondId}", "debug" )
     if (device.deviceNetworkId.contains("uplight"))
     {
         if (executeAction(bondId, "TurnUpLightOff")) 
@@ -857,26 +847,26 @@ def handleStopDimming(device)
 
 def handleLightLevel(device, level) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Light Level event for ${bondId}"
+    logAppEvent( "Handling Light Level event for ${bondId}", "debug" )
     if (device.deviceNetworkId.contains("uplight"))
     {
         if (executeAction(bondId, "SetUpLightBrightness", level)) 
         {
-            device.sendEvent(name: "level", value: level, type: "digital")
+            device.sendEvent(name: "level", value: level, unit: "%", type: "digital")
         }
     }
     else if (device.deviceNetworkId.contains("downlight"))
     {
         if (executeAction(bondId, "SetDownLightBrightness", level)) 
         {
-            device.sendEvent(name: "level", value: level, type: "digital")
+            device.sendEvent(name: "level", value: level, unit: "%", type: "digital")
         }
     }
     else 
     {
         if (executeAction(bondId, "SetBrightness", level)) 
         {
-            device.sendEvent(name: "level", value: level, type: "digital")
+            device.sendEvent(name: "level", value: level, unit: "%", type: "digital")
         }
     }
 }
@@ -884,7 +874,7 @@ def handleLightLevel(device, level) {
 def handleSetFlame(device, height)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Flame event for ${bondId}"
+    logAppEvent( "Handling Flame event for ${bondId}", "debug" )
     
     if (height == "off")
     {
@@ -911,7 +901,7 @@ def handleSetFlame(device, height)
 def handleOpen(device)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Open event for ${bondId}"
+    logAppEvent( "Handling Open event for ${bondId}", "debug" )
     
     if (executeAction(bondId, "Open")) 
     {
@@ -922,7 +912,7 @@ def handleOpen(device)
 def handleOpenNext(device)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling OpenNext event for ${bondId}"
+    logAppEvent( "Handling OpenNext event for ${bondId}", "debug" )
 
     if (executeAction(bondId, "OpenNext"))
     {
@@ -933,7 +923,7 @@ def handleOpenNext(device)
 def handleClose(device)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Close event for ${bondId}"
+    logAppEvent( "Handling Close event for ${bondId}", "debug" )
 
     if (executeAction(bondId, "Close"))
     {
@@ -944,7 +934,7 @@ def handleClose(device)
 def handleCloseNext(device)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling CloseNext event for ${bondId}"
+    logAppEvent( "Handling CloseNext event for ${bondId}", "debug" )
 
     if (executeAction(bondId, "CloseNext"))
     {
@@ -955,7 +945,7 @@ def handleCloseNext(device)
 def handleStop(device)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Stop event for ${bondId}"
+    logAppEvent( "Handling Stop event for ${bondId}", "debug" )
     
     executeAction(bondId, "Hold")
 }
@@ -963,7 +953,7 @@ def handleStop(device)
 def handlePreset(device)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Preset event for ${bondId}"
+    logAppEvent( "Handling Preset event for ${bondId}", "debug" )
     
     executeAction(bondId, "Preset")
 }
@@ -971,7 +961,7 @@ def handlePreset(device)
 def fixPowerState(device, state) 
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting power state for ${bondId} to ${state}"
+    logAppEvent( "Setting power state for ${bondId} to ${state}", "debug" )
     
     def power
     if (state == "on")
@@ -997,7 +987,7 @@ def fixPowerState(device, state)
 def fixFlameState(device, state) 
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting flame state for ${bondId} to ${state}"
+    logAppEvent( "Setting flame state for ${bondId} to ${state}", "debug" )
     
     def flameHeight = 0
     if (height == "low")
@@ -1017,7 +1007,7 @@ def fixFanSpeed(device, fanState)
 {
     def bondId = getBondIdFromDevice(device)
     def speed = translateHEFanSpeedToBond(bondId, state.fanProperties?.getAt(bondId)?.max_speed ?: 3, fanState)
-    logDebug "Setting fan speed for ${bondId} to ${fanState}"
+    logAppEvent( "Setting fan speed for ${bondId} to ${fanState}", "debug" )
 
     if (fanState == "off") 
     {
@@ -1038,7 +1028,7 @@ def fixFanSpeed(device, fanState)
 def fixShadeState(device, state) 
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting shade state for ${bondId} to ${state}"
+    logAppEvent( "Setting shade state for ${bondId} to ${state}", "debug" )
 
     def open
     if (state == "open")
@@ -1064,7 +1054,7 @@ def fixShadeState(device, state)
 def fixDirection(device, state) 
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting direction state for ${bondId} to ${state}"
+    logAppEvent( "Setting direction state for ${bondId} to ${state}", "debug" )
 
     def direction
     if (state == "forward")
@@ -1088,7 +1078,7 @@ def fixDirection(device, state)
 def fixFPFanPower(device, state) 
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting FP fan power state for ${bondId} to ${state}"
+    logAppEvent( "Setting FP fan power state for ${bondId} to ${state}", "debug" )
 
     def fppower
     if (state == "on")
@@ -1114,7 +1104,7 @@ def fixFPFanPower(device, state)
 def fixFPFanSpeed(device, fanState) 
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting FP fan speed state for ${bondId} to ${fanState}"
+    logAppEvent( "Setting FP fan speed state for ${bondId} to ${fanState}", "debug" )
     
     def speed = translateHEFanSpeedToBond(bondId, state.fireplaceProperties?.getAt(bondId)?.max_speed ?: 3, fanState)
 
@@ -1138,7 +1128,7 @@ def fixFPFanSpeed(device, fanState)
 
 def fixLightPower(device, state) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting light state for ${bondId} to ${state}"
+    logAppEvent( "Setting light state for ${bondId} to ${state}", "debug" )
     
     def power
     if (state == "on")
@@ -1171,13 +1161,13 @@ def fixLightPower(device, state) {
 
 def fixLightLevel(device, state) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Setting light level for ${bondId} to ${state}"
+    logAppEvent( "Setting light level for ${bondId} to ${state}", "debug" )
     
     if (device.deviceNetworkId.contains("uplight"))
     {
         if (executeFixState(bondId, '{"up_light_brightness": ' + state + '}')) 
         {
-            device.sendEvent(name: "level", value: state, type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "level", value: state, unit: "%", type: "digital", descriptionText: "Manual driver state update")
         }
         if (state == 0)
         {
@@ -1191,7 +1181,7 @@ def fixLightLevel(device, state) {
     {
         if (executeFixState(bondId, '{"down_light_brightness": ' + state + '}'))
         {
-            device.sendEvent(name: "level", value: state, type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "level", value: state, unit: "%", type: "digital", descriptionText: "Manual driver state update")
         }
         if (state == 0)
         {
@@ -1205,7 +1195,7 @@ def fixLightLevel(device, state) {
     {
         if (executeFixState(bondId, '{"brightness": ' + state + '}'))
         {
-            device.sendEvent(name: "level", value: state, type: "digital", descriptionText: "Manual driver state update")
+            device.sendEvent(name: "level", value: state, unit: "%", type: "digital", descriptionText: "Manual driver state update")
         }
         if (state == 0)
         {
@@ -1289,7 +1279,7 @@ def handleFanSpeed(device, speed) {
 
 def handleFPFanSpeed(device, speed) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Fireplace Fan Speed event for ${bondId}"
+    logAppEvent( "Handling Fireplace Fan Speed event for ${bondId}", "debug" )
 
     if (speed == "off")    
         handleFPFanOff(device)
@@ -1306,7 +1296,7 @@ def handleFPFanSpeed(device, speed) {
 
 def handleFPFanOn(device) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Fan On event for ${bondId}"
+    logAppEvent( "Handling Fan On event for ${bondId}", "debug" )
     
     if (executeAction(bondId, "TurnFpFanOn")) 
     {
@@ -1320,7 +1310,7 @@ def handleFPFanOn(device) {
 
 def handleFPFanOff(device) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Fan Off event for ${bondId}"
+    logAppEvent( "Handling Fan Off event for ${bondId}", "debug" )
     
     
     if (executeAction(bondId, "TurnFpFanOff")) 
@@ -1335,7 +1325,7 @@ def handleFPFanOff(device) {
 
 def handleOff(device) {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Off event for ${bondId}"
+    logAppEvent( "Handling Off event for ${bondId}", "debug" )
 
     if (executeAction(bondId, "TurnOff") && shouldSendEvent(bondId)) 
     {
@@ -1351,7 +1341,7 @@ def handleOff(device) {
 def handleDirection(device, direction)
 {
     def bondId = getBondIdFromDevice(device)
-    logDebug "Handling Direction event for ${bondId}"
+    logAppEvent( "Handling Direction event for ${bondId}", "debug" )
 
     def bondDirection = 1
     if (direction == "reverse")
@@ -1393,7 +1383,7 @@ def getState(bondId) {
 }
 
 def hasAction(bondId, commandType) {
-    logDebug "searching for ${commandType} for ${bondId}"
+    logAppEvent( "searching for ${commandType} for ${bondId}", "debug" )
     def params = [
         uri: "http://${hubIp}",
         path: "/v2/devices/${bondId}/actions",
@@ -1410,7 +1400,7 @@ def hasAction(bondId, commandType) {
                     if (commandId.key == "_")
                         continue
                     if (commandId.key == commandType) {
-                        logDebug "found command ${commandId.key} for ${bondId}"
+                        logAppEvent( "found command ${commandId.key} for ${bondId}", "debug" )
                         commandToReturn = true
                         break
                     }
@@ -1503,7 +1493,7 @@ def executeFixState(bondId, body) {
         body: body
     ]
     def isSuccessful = false
-    logDebug "calling fix state ${params.body}"
+    logAppEvent( "calling fix state ${params.body}", "debug" )
     try
     {
         httpPatch(params) { resp ->
