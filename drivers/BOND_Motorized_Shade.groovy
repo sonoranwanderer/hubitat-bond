@@ -9,10 +9,10 @@
  */
 
 import groovy.transform.Field
-@Field static final String VERSION   = "202411061015"
+@Field static final String VERSION   = "202411061100"
 @Field static final String DRIVER    = "Bond Motorized Shade"
 @Field static final String COMM_LINK = "https://github.com/sonoranwanderer/hubitat-bond"
-@Field static final String REQAPPVER = "202411061100"
+@Field static final String REQAPPVER = "202411061000"
 
 metadata {
     definition (
@@ -99,7 +99,7 @@ String fmtHelpInfo( String title ) {
             logEvent( "${DRIVER}: ${VERSION}: You need to update the Bond Home Integration app code to version ${REQAPPVER} or later", "error" )
             info = "${DRIVER}: ${VERSION}<br><div style='color:RED;'>Please update Bond APP to version &lt= ${REQAPPVER}. Current app version: ${appVersion}.</div>"
         }
-    } else if ( device?.displayName != null ) {
+    } else if ( device?.displayName != null ) { /* This test is to prevent the Hubitat editor sandbox evaluation on save from blowing things up */
         logEvent( "${DRIVER}: ${VERSION}: You need to update the Bond Home Integration app code to version ${REQAPPVER} or later", "error" )
         if ( appVersion == null ) { 
             info = "${DRIVER}: ${VERSION}<br><div style='color:RED;'>Please update Bond APP to version >= ${REQAPPVER}. Current app version is missing.</div>"
