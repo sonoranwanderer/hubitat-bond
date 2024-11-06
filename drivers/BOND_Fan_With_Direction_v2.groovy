@@ -15,8 +15,9 @@
  *  Nov 04, 2024 - logging improvements, fix Hubitat/groovy data type issues detecting Breeze support
  *  Nov 04, 2024 - log at the highest level of detail requested between the driver and parent Bond Home Integration app
  *  Nov 05, 2024 - fix getBondDeviceState() bug, Update sendEvent() calls for type of event when changing or detecting device state, fix toggleBreeze() not updating driver state
+ *  Nov 06, 2024 - fix issue with duplicate speeds for fans with >=6 speed options
  *
- *  VERSION 202411051815
+ *  VERSION 202411060730
  */
 
 metadata {
@@ -472,8 +473,12 @@ void loadSupportedFanSpeeds( int maxSpeedN ) {
     while ( curSpeedN < maxSpeedN ) {
         curSpeedN += 1
         newSpeedS = parent.translateBondFanSpeedToHE( device, maxSpeedN, curSpeedN )
-        logEvent( "loadSupportedFanSpeeds() Found new speed: ${newSpeedS}", "debug" )
-        fanSpeeds = fanSpeeds + [ newSpeedS ]
+        logEvent( "loadSupportedFanSpeeds() Found new speed: ${newSpeedS}, max speed: ${maxSpeedN}", "debug" )
+        if ( ! fanSpeeds.contains( newSpeedS ) ) {
+            fanSpeeds = fanSpeeds + [ newSpeedS ]
+        } else {
+            logEvent( "loadSupportedFanSpeeds() skipping duplicate speed: ${newSpeedS}", "debug" )
+        }
     }
     if ( device.currentValue( "bondBreezeMode" ) != null )
         fanSpeeds =  fanSpeeds.reverse() + [ "auto" ]
