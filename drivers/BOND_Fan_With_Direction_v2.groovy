@@ -20,7 +20,7 @@
  */
 
 import groovy.transform.Field
-@Field static final String VERSION   = "202411061100"
+@Field static final String VERSION   = "202411061830"
 @Field static final String DRIVER    = "Bond Fan with Direction v2"
 @Field static final String COMM_LINK = "https://github.com/sonoranwanderer/hubitat-bond"
 @Field static final String REQAPPVER = "202411061000"
@@ -78,7 +78,7 @@ void logEvent ( message="", level="info" ) {
     Integer appLevelN = 6 /* impossibly high for later test */
 
     /*
-     *  Will generate error in logs in App is an older version of code without childGetSettings().
+     *  Will generate error in logs if App is an older version of code without childGetSettings().
      *  Can't seem to trap MissingMethodExceptionNoStack exceptions
      */
     String appLogLevel = stuff = parent.childGetSettings( "logLevel" )
@@ -131,7 +131,7 @@ String fmtHelpInfo( String title ) {
             logEvent( "${DRIVER}: ${VERSION}: You need to update the Bond Home Integration app code to version ${REQAPPVER} or later", "error" )
             info = "${DRIVER}: ${VERSION}<br><div style='color:RED;'>Please update Bond APP to version &lt= ${REQAPPVER}. Current app version: ${appVersion}.</div>"
         }
-    } else if ( device?.displayName != null ) {
+    } else if ( device?.displayName != null ) { /* This test is to prevent the Hubitat editor sandbox evaluation on save from blowing things up */
         logEvent( "${DRIVER}: ${VERSION}: You need to update the Bond Home Integration app code to version ${REQAPPVER} or later", "error" )
         if ( appVersion == null ) { 
             info = "${DRIVER}: ${VERSION}<br><div style='color:RED;'>Please update Bond APP to version >= ${REQAPPVER}. Current app version is missing.</div>"
@@ -154,6 +154,43 @@ String fmtHelpInfo( String title ) {
 
 	return "<div style='font-size: 160%; font-style: bold; padding: 2px 0px; text-align: center;'>${prefLink}</div>" +
 		"<div style='text-align: center; position: absolute; top: 46px; right: 60px; padding: 0px;'><ul class='nav'><li>${topLink}</ul></li></div>"
+}
+
+boolean updateAttribute( Map attribute ) {
+    /* Only update if there is a change */
+    Integer action       = 0
+    def     currentValue = device.currentValue( attribute.name )
+
+    logEvent( "updateAttribute(): called with name: '${attribute.name}', value: '${attribute.value}', type: '${attribute.type}', description: '${attribute.descriptionText}'", "trace" )
+    if ( attribute.name == null ) {
+        logEvent( "updateAttribute(): attribute name is null", "error" )
+        return false
+    }
+    if ( attribute.value == null ) {
+        logEvent( "updateAttribute(): attribute value is null", "error" )
+        return false
+    }
+    if ( currentValue == null ) {
+        currentValue = "null"
+        action = 1
+    } else {
+        if ( currentValue != attribute.name ) {
+            action = 1
+        }
+    }
+    if ( attribute.type == null )
+        attribute.type = "digital"
+    /* if ( attribute.descriptionText == null )
+        attribute.descriptionText = "" */
+
+    if ( action ) {
+        sendEvent( name: attribute.name, value: attribute.value, type: attribute.type, descriptionText: attribute.descriptionText )
+    } else {
+        logEvent( "updateAttribute(): not updating ${attribute.name} with new value: '${attribute.value}', type: '${attribute.type}', description: '${attribute.descriptionText}'. Current value: '${currentValue}'" , "trace" )
+        return false
+    }
+    logEvent( "updateAttribute(): updated ${attribute.name} with new value: '${attribute.value}', type: '${attribute.type}', description: '${attribute.descriptionText}'. Old value: '${currentValue}'" , "trace" )
+    return true
 }
 
 boolean checkHttpResponse( action, resp ) {
@@ -259,29 +296,25 @@ def getBondDeviceState() {
     if ( bondState != null ) {
         device.updateDataValue( "bondState", bondState.toMapString() )
         if ( bondState.breeze != null ) {
-            sendEvent( name:"bondBreezeMode", value:"${bondState.breeze[0]}" )
-            sendEvent( name:"bondBreezeAverage", value:"${bondState.breeze[1]}" )
-            sendEvent( name:"bondBreezeSupport", value:1 )
-            sendEvent( name:"bondBreezeVariability", value:"${bondState.breeze[2]}" )
+            updateAttribute( name:"bondBreezeMode", value:"${bondState.breeze[0]}" )
+            updateAttribute( name:"bondBreezeAverage", value:"${bondState.breeze[1]}" )
+            updateAttribute( name:"bondBreezeSupport", value:1 )
+            updateAttribute( name:"bondBreezeVariability", value:"${bondState.breeze[2]}" )
         } else {
-            sendEvent( name:"bondBreezeSupport", value:0 )
+            updateAttribute( name:"bondBreezeSupport", value:0 )
         }
         if ( bondState.direction != null )
-            sendEvent( name:"bondDirectionSupport", value:1 )
+            updateAttribute( name:"bondDirectionSupport", value:1 )
         else
-            sendEvent( name:"bondDirectionSupport", value:0 )
+            updateAttribute( name:"bondDirectionSupport", value:0 )
         if ( bondState.power != null ) {
             if ( bondState.power ) {
-                if ( device.currentValue( "switch" ) == "off" ) {
-                    sendEvent( name: "switch", value: "on",  type: "physical", descriptionText: "Bond fan state update 'on'"  )
-                    def curSpeedS = parent.translateBondFanSpeedToHE( myId, maxSpeedN, bondState.speed )
-                    device.sendEvent( name: "speed",  value: curSpeedS, type: "physical", descriptionText: "Bond fan speed state update '${curSpeedS}'" )
-                }
+                updateAttribute( name: "switch", value: "on",  type: "physical", descriptionText: "Bond fan state update 'on'"  )
+                def curSpeedS = parent.translateBondFanSpeedToHE( myId, maxSpeedN, bondState.speed )
+                updateAttribute( name: "speed",  value: curSpeedS, type: "physical", descriptionText: "Bond fan speed state update '${curSpeedS}'" )
             } else {
-                if ( device.currentValue( "switch" ) == "on" ) {
-                    sendEvent( name: "switch", value: "off", type: "physical", descriptionText: "Bond fan state update 'off'" )
-                    sendEvent( name: "speed",  value: "off", type: "physical", descriptionText: "Bond fan speed state update 'off'"  )
-                }
+                updateAttribute( name: "switch", value: "off", type: "physical", descriptionText: "Bond fan state update 'off'" )
+                updateAttribute( name: "speed",  value: "off", type: "physical", descriptionText: "Bond fan speed state update 'off'"  )
             }
         }
     } else {
@@ -431,7 +464,7 @@ void configure() {
     def myId = getMyBondId()
     def max = getMaxSpeed( myId )
     if ( max != null ) {
-        sendEvent( name: 'bondFanMaxSpeed', value: max )
+        updateAttribute( name:'bondFanMaxSpeed', value:max )
     } else {
         logEvent( "configure() failed to get fan max speed", "error" )
     }
@@ -523,7 +556,7 @@ int getMaxSpeed( devId ) {
 void loadSupportedFanSpeeds( int maxSpeedN ) {
     int curSpeedN = 0
     String[] fanSpeeds = []
-    
+
     while ( curSpeedN < maxSpeedN ) {
         curSpeedN += 1
         newSpeedS = parent.translateBondFanSpeedToHE( device, maxSpeedN, curSpeedN )
@@ -534,11 +567,16 @@ void loadSupportedFanSpeeds( int maxSpeedN ) {
             logEvent( "loadSupportedFanSpeeds() skipping duplicate speed: ${newSpeedS}", "debug" )
         }
     }
-    if ( device.currentValue( "bondBreezeMode" ) != null )
+    if ( device.currentValue( "bondBreezeMode" ) != null ) {
         fanSpeeds =  fanSpeeds.reverse() + [ "auto" ]
+    } else {
+        def bondState = getBondDeviceState()
+        if ( bondState.breeze != null )
+            fanSpeeds =  fanSpeeds.reverse() + [ "auto" ]
+    }
     speedList = fanSpeeds.join( "," )
     logEvent( "loadSupportedFanSpeeds() fanSpeeds = [${speedList},off,on]", "debug" )
-    sendEvent(name: "supportedFanSpeeds", value: groovy.json.JsonOutput.toJson(fanSpeeds + ["off", "on"]))
+    updateAttribute( name: "supportedFanSpeeds", value: groovy.json.JsonOutput.toJson( fanSpeeds + ["off", "on"] ) )
 }
 
 void queryDevice() {
@@ -632,10 +670,9 @@ def toggleBreeze( force="" ) {
 
     if ( targetState == "BreezeOn" ) {
         parent.executeAction( myId, targetState )
-        sendEvent( name:"bondBreezeMode", value:1 )
-        if ( device.currentValue( "speed" ) == "off" )
-            sendEvent( name:"switch", value:"on", type:"digital" )
-        sendEvent( name:"speed", value:getDeviceSpeed(), type:"digital" )
+        updateAttribute( name:"bondBreezeMode", value:1 )
+        updateAttribute( name:"switch", value:"on", type:"digital" )
+        updateAttribute( name:"speed", value:getDeviceSpeed(), type:"digital" )
     } else {
         off()
     }
@@ -660,7 +697,7 @@ void on() {
     if ( state.lastSpeed != null )
         parent.handleFanSpeed( device, state.lastSpeed )
     devSpeedS = getDeviceSpeed()
-    sendEvent( name:"speed", value:devSpeedS, type:"digital" )
+    updateAttribute( name:"speed", value:devSpeedS, type:"digital" )
     logEvent( "on(): Turned fan on", "info" )
 }
 
@@ -669,7 +706,7 @@ void off() {
     logEvent( "off(): Breeze Support (${device.currentValue( "bondBreezeSupport" ).toInteger()})", "trace" )
     if ( device.currentValue( "bondBreezeSupport" ).toInteger() > 0 ) {
         parent.executeAction( getMyBondId(), "BreezeOff" )
-        sendEvent( name:"bondBreezeMode", value:"0" )
+        updateAttribute( name:"bondBreezeMode", value:"0" )
     }
     logEvent( "off(): Turned fan off", "info" )
 }
@@ -702,7 +739,7 @@ void setSpeed( String speed ) {
     }
     if ( device.currentValue( "bondBreezeSupport" ).toInteger() > 0 ) {
         parent.executeAction( getMyBondId(), "BreezeOff" )
-        sendEvent(name:"bondBreezeMode", value:"0")
+        updateAttribute( name:"bondBreezeMode", value:"0" )
     }
     parent.handleFanSpeed(device, speed)
 }
