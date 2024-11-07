@@ -20,7 +20,7 @@
  */
 
 import groovy.transform.Field
-@Field static final String VERSION   = "202411061830"
+@Field static final String VERSION   = "202411071150"
 @Field static final String DRIVER    = "Bond Fan with Direction v2"
 @Field static final String COMM_LINK = "https://github.com/sonoranwanderer/hubitat-bond"
 @Field static final String REQAPPVER = "202411061000"
@@ -180,8 +180,6 @@ boolean updateAttribute( Map attribute ) {
     }
     if ( attribute.type == null )
         attribute.type = "digital"
-    /* if ( attribute.descriptionText == null )
-        attribute.descriptionText = "" */
 
     if ( action ) {
         sendEvent( name: attribute.name, value: attribute.value, type: attribute.type, descriptionText: attribute.descriptionText )
@@ -470,13 +468,10 @@ void configure() {
     }
     getBondDeviceState()
     loadSupportedFanSpeeds( max )
-    if ( state.maxSpeed != null ) {
-        wipeStateData( 1 )
-    }
 }
 
 void chkConfigure() {
-    if ( device.currentValue('bondFanMaxSpeed') == null ) {
+    if ( device.currentValue('bondFanMaxSpeed') == null || device.currentValue('supportedFanSpeeds') == null ) {
         configure()
     }
 }
