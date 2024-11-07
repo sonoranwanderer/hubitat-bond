@@ -7,8 +7,6 @@
  *  Additional copyright 2024 Gatewood Green
  *  Additional copyright 2024 @terminal3
  *
- *  VERSION 202411052045
- *
  * Revision History
  * 2020.01.18 - Added setPosition support for motorized shades, mapping a special value of 50 to the Preset command
  * 2019.12.01 - Fixed an issue where dimmers wouldn't work with fans that support direction controls, fixed an issue setting flame height
@@ -30,6 +28,11 @@
  *
  */
 
+import groovy.transform.Field
+@Field static final String VERSION   = "202411071150"
+@Field static final String NAME      = "Bond Home Integration"
+@Field static final String COMM_LINK = "https://github.com/sonoranwanderer/hubitat-bond"
+
 definition(
     name: "BOND Home Integration",
     namespace: "dcm.bond",
@@ -46,6 +49,14 @@ preferences {
     page(name: "prefHub", title: "BOND")
     page(name: "prefListDevices", title: "BOND")
     page(name: "prefPowerSensors", title: "BOND")
+}
+
+def getVersion() {
+    return VERSION
+}
+
+def getName() {
+    return NAME
 }
 
 def prefHub() {
@@ -152,12 +163,7 @@ void logAppEvent ( message="", level="info" ) {
         if ( settings?.logLevel != "trace" && settings?.logLevel != "debug" )
             return
     }
-    
-    if ( level == "trace" || level == "debug" ) {
-        log."${level}" "${app.name}: logLevel=${logLevel}: ${message}"
-    } else {
-        log."${level}" "${app.name}: ${message}"
-    }
+    log."${level}" "${app.name}: ${message}"
 }
 
 def getHubId() {
@@ -1261,6 +1267,11 @@ def handleFanSpeed(device, speed) {
     def bondId = getBondIdFromDevice(device)
     logAppEvent( "handleFanSpeed(): called for device=${bondId}, speed=${speed}", "debug" )
 
+    if ( settings?.logLevel == "trace" ) {
+        logAppEvent( "handleFanSpeed(): checking Bond device state before speed change...", "trace")
+        getState(bondId)
+    }
+
     if ( speed == "off" ) {
         if ( handleOff( device ) ) {
             device.sendEvent( name: "speed", value: "off", type: "digital" )
@@ -1274,6 +1285,10 @@ def handleFanSpeed(device, speed) {
             device.sendEvent( name: "switch", value: "on", type: "digital" )
             device.sendEvent( name: "speed", value: speed, type: "digital" )
         }
+    }
+    if ( settings?.logLevel == "trace" ) {
+        logAppEvent( "handleFanSpeed(): checking Bond device state after speed change...", "trace")
+        getState(bondId)
     }
 }
 
@@ -1537,19 +1552,18 @@ def shouldSendEvent(bondId) {
 }
 
 def checkHttpResponse(action, resp) {
-    if (resp.status == 200 || resp.status == 201 || resp.status == 204)
+    if (resp.status == 200 || resp.status == 201 || resp.status == 204) {
+        logAppEvent( "checkHttpResponse(): ${action}: Bond response, status: '${resp.status}', data: '${resp.getData()}'", "trace" )
         return true
-    else if (resp.status == 400 || resp.status == 401 || resp.status == 404 || resp.status == 409 || resp.status == 500)
-    {
+    } else if (resp.status == 400 || resp.status == 401 || resp.status == 404 || resp.status == 409 || resp.status == 500) {
         logAppEvent( "checkHttpResponse(): ${action}: Bond error response: ${resp.status} - ${resp.getData()}", "error" )
         return false
-    }
-    else
-    {
-        if ( resp.getData() == null )
+    } else {
+        if ( resp.getData() == null ) {
             logAppEvent( "checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - (Bond returned no response data)", "error" )
-        else
+        } else {
             logAppEvent( "checkHttpResponse(): ${action}: Unexpected Bond error response: ${resp.status} - ${resp.getData()}", "error" )
+        }
         return false
     }
 }
