@@ -16,11 +16,12 @@
  *  Nov 04, 2024 - log at the highest level of detail requested between the driver and parent Bond Home Integration app
  *  Nov 05, 2024 - fix getBondDeviceState() bug, Update sendEvent() calls for type of event when changing or detecting device state, fix toggleBreeze() not updating driver state
  *  Nov 06, 2024 - fix issue with duplicate speeds for fans with >=6 speed options
+ *  Nov 07, 2024 - bug fixes
  *
  */
 
 import groovy.transform.Field
-@Field static final String VERSION   = "202411071150"
+@Field static final String VERSION   = "202411071940"
 @Field static final String DRIVER    = "Bond Fan with Direction v2"
 @Field static final String COMM_LINK = "https://github.com/sonoranwanderer/hubitat-bond"
 @Field static final String REQAPPVER = "202411061000"
@@ -746,8 +747,14 @@ void cycleSpeed() {
     String curSpeedS = ""
     String newSpeedS = "low"
 
-    if ( device.currentValue('bondFanMaxSpeed') != null ) {
-        maxSpeedN = device.currentValue('bondFanMaxSpeed')
+    if ( device.currentValue( 'bondFanMaxSpeed' ) != null ) {
+        maxSpeedN = device.currentValue( 'bondFanMaxSpeed' )
+        if ( maxSpeedN > 10 ) { /* fixing sins of the past */
+            logEvent( "cycleSpeed(): bondFanMaxSpeed stored as string instead of number, attempting to fix...", "debug" )
+            maxSpeedN = maxSpeedN.toInteger()
+            device.deleteCurrentState( "bondFanMaxSpeed" )
+            sendEvent( name: "bondFanMaxSpeed", value: maxSpeedN, descriptionText: "Converting string to number" )
+        }
     } else {
         logEvent( "cycleSpeed() ID Bond missing, running Configure. Try again", "warn" )
         chkConfigure()
